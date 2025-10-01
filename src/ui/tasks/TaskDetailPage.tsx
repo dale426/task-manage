@@ -11,7 +11,7 @@ import {
   Input,
 } from "antd";
 import dayjs from "dayjs";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useStore } from "../../domain/store";
 import type { ID, Task, Subtask } from "../../domain/types";
@@ -247,6 +247,7 @@ export default function TaskDetailPage() {
                     // 显示是否有任何用户完成了这个步骤
                     const isCompletedByAnyone = Boolean(step.doneByUserId);
                     const completedUsersCount = (step.completedByUsers || []).length;
+                    const currentColor = colors[index % colors.length];
 
                     return (
                       <div
@@ -258,7 +259,16 @@ export default function TaskDetailPage() {
                           padding: "8px 12px",
                           border: "1px solid #f0f0f0",
                           borderRadius: "6px",
-                          backgroundColor: isCompletedByCurrentUser ? "#f6ffed" : "#fff"
+                          backgroundColor: "#fff",
+                          cursor: "pointer",
+                          transition: "all 0.2s ease"
+                        }}
+                        onClick={() => {
+                          if (task.userIds.length > 1 && activeUserId) {
+                            setStepDone(task.id, null, step.id, !isCompletedByCurrentUser, activeUserId);
+                          } else {
+                            setStepDone(task.id, null, step.id, !isCompletedByCurrentUser);
+                          }
                         }}
                       >
                         <div style={{ minWidth: "20px", textAlign: "center" }}>
@@ -274,6 +284,7 @@ export default function TaskDetailPage() {
                               setStepDone(task.id, null, step.id, e.target.checked);
                             }
                           }}
+                          className="custom-checkbox"
                         >
                           {step.name}
                         </Checkbox>
@@ -321,24 +332,37 @@ export default function TaskDetailPage() {
                     );
                     const userDone =
                       userSubs.length > 0 && userSubs.every((s) => s.completed);
+                    const incompleteCount = userSubs.filter(s => !s.completed).length;
+                    
                     return {
                       key: uid,
                       label: (
-                        <span style={{ position: "relative" }}>
+                        <span style={{ position: "relative", display: "flex", alignItems: "center", gap: "4px" }}>
                           {uname}
-                          {userDone && (
+                          {userDone ? (
                             <span
                               style={{
-                                position: "absolute",
-                                top: -2,
-                                right: -8,
                                 fontSize: "12px",
                                 color: "#52c41a",
                               }}
                             >
                               ✓
                             </span>
-                          )}
+                          ) : incompleteCount > 0 ? (
+                            <span
+                              style={{
+                                fontSize: "10px",
+                                backgroundColor: "#ff4d4f",
+                                color: "white",
+                                padding: "1px 4px",
+                                borderRadius: "8px",
+                                minWidth: "16px",
+                                textAlign: "center"
+                              }}
+                            >
+                              {incompleteCount}
+                            </span>
+                          ) : null}
                         </span>
                       ),
                     };
@@ -467,42 +491,57 @@ export default function TaskDetailPage() {
                                   gap: 8,
                                 }}
                               >
-                                {st.steps.map((sp, index) => (
-                                  <div
-                                    key={sp.id}
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: 8,
-                                      padding: "6px 10px",
-                                      border: "1px solid #f0f0f0",
-                                      borderRadius: "4px",
-                                      backgroundColor: sp.doneByUserId === st.ownerUserId ? "#f6ffed" : "#fff"
-                                    }}
-                                  >
-                                    <div style={{ minWidth: "16px", textAlign: "center", fontSize: "12px" }}>
-                                      {index + 1}
-                                    </div>
-                                    <Checkbox
-                                      checked={sp.doneByUserId === st.ownerUserId}
-                                      onChange={(e) =>
-                                        setStepDone(
-                                          task.id,
-                                          st.id,
-                                          sp.id,
-                                          e.target.checked
-                                        )
-                                      }
-                                    >
-                                      {sp.name}
-                                    </Checkbox>
-                                    {sp.doneByUserId === st.ownerUserId && sp.completedAt && (
-                                      <div style={{ marginLeft: "auto", fontSize: "11px", color: "#666" }}>
-                                        完成于: {dayjs(sp.completedAt).format("MM-DD HH:mm")}
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
+                                 {st.steps.map((sp, stepIndex) => {
+                                   const currentColor = colors[idx % colors.length];
+                                   const isCompleted = sp.doneByUserId === st.ownerUserId;
+                                   
+                                   return (
+                                     <div
+                                       key={sp.id}
+                                       style={{
+                                         display: "flex",
+                                         alignItems: "center",
+                                         gap: 8,
+                                         padding: "6px 10px",
+                                         border: "1px solid #f0f0f0",
+                                         borderRadius: "4px",
+                                         backgroundColor: isCompleted ? "#f6ffed" : "#fff",
+                                         cursor: "pointer",
+                                         transition: "all 0.2s ease"
+                                       }}
+                                       onClick={() => setStepDone(task.id, st.id, sp.id, !isCompleted)}
+                                     >
+                                       <div style={{ minWidth: "16px", textAlign: "center", fontSize: "12px" }}>
+                                         {stepIndex + 1}
+                                       </div>
+                                       <Checkbox
+                                         checked={isCompleted}
+                                         onChange={(e) =>
+                                           setStepDone(
+                                             task.id,
+                                             st.id,
+                                             sp.id,
+                                             e.target.checked
+                                           )
+                                         }
+                                         style={{
+                                           '--ant-checkbox-color': currentColor,
+                                           '--ant-checkbox-checked-color': currentColor,
+                                           '--ant-checkbox-checked-bg': currentColor,
+                                           '--ant-checkbox-checked-border-color': currentColor,
+                                         } as React.CSSProperties}
+                                         className="custom-checkbox"
+                                       >
+                                         {sp.name}
+                                       </Checkbox>
+                                       {isCompleted && sp.completedAt && (
+                                         <div style={{ marginLeft: "auto", fontSize: "11px", color: "#666" }}>
+                                           完成于: {dayjs(sp.completedAt).format("MM-DD HH:mm")}
+                                         </div>
+                                       )}
+                                     </div>
+                                   );
+                                 })}
                               </div>
                               {st.note !== undefined && st.note !== null && (
                                 <div style={{ marginTop: 8 }}>

@@ -39,7 +39,7 @@ function hslToHex(h: number, s: number, l: number) {
     if (s === 0) {
         r = g = b = l; // 灰度
     } else {
-        const hue2rgb = (p, q, t) => {
+        const hue2rgb = (p: number, q: number, t: number) => {
             if (t < 0) t += 1;
             if (t > 1) t -= 1;
             if (t < 1 / 6) return p + (q - p) * 6 * t;
@@ -56,7 +56,7 @@ function hslToHex(h: number, s: number, l: number) {
         b = hue2rgb(p, q, h - 1 / 3);
     }
 
-    const toHex = x => {
+    const toHex = (x: number) => {
         const hex = Math.round(x * 255).toString(16);
         return hex.length === 1 ? '0' + hex : hex;
     };
@@ -69,11 +69,11 @@ export const colors = [
     "#fed886",
     "#ee7a80",
     "#abd5b7",
-    "#8bdaab",
     "#f495ae",
     "#faad14",
-    "#13c2c2",
+    "#8bdaab",
     "#8f88f2",
     "#ee9f8b",
+    "#13c2c2",
     "#e6e499"
 ]
