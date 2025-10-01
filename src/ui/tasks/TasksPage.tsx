@@ -375,6 +375,11 @@ export default function TasksPage() {
                     )
                     .join("、") || "-"}
                 </div>
+                {r.type === "composite" && r.subtasks && r.subtasks.length > 0 && (
+                  <div style={{ color: "#666", fontSize: "12px" }}>
+                    子任务: {r.subtasks.filter(s => s.completed).length}/{r.subtasks.length}
+                  </div>
+                )}
                 <div
                   style={{
                     display: "flex",
@@ -466,6 +471,16 @@ export default function TasksPage() {
                     (uid) => users.find((u) => u.id === uid)?.nickname ?? "未知"
                   )
                   .join("、") || "-",
+            },
+            {
+              title: "子任务",
+              render: (_: any, r: Task) => {
+                if (r.type === "composite" && r.subtasks && r.subtasks.length > 0) {
+                  const completedCount = r.subtasks.filter(s => s.completed).length;
+                  return `${completedCount}/${r.subtasks.length}`;
+                }
+                return "-";
+              },
             },
             {
               title: "截止时间",

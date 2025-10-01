@@ -16,11 +16,12 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useStore } from "../../domain/store";
 import type { ID, Task, Subtask } from "../../domain/types";
 import { nanoid } from "../../utils/id";
+import { colors, getRandomColor } from "@/utils/randomColor";
 
 export default function TaskDetailPage() {
   const { taskId } = useParams();
   const navigate = useNavigate();
-  const { tasks, users, projects, setStepDone, updateTask } = useStore();
+  const { tasks, users, projects, setStepDone, updateTask, setTaskCompletedByUser } = useStore();
   const task = useMemo(
     () => tasks.find((t) => t.id === taskId),
     [tasks, taskId]
@@ -71,7 +72,7 @@ export default function TaskDetailPage() {
               gap: 8,
             }}
           >
-            {task.type === "single" && task.steps.length === 0 && (
+            {task.type === "single" && task.steps.length === 0 && task.userIds.length === 1 && (
               <Checkbox
                 checked={task.completed}
                 onChange={() =>
@@ -120,14 +121,80 @@ export default function TaskDetailPage() {
         {task.type === "single" ? (
           <Card title="完成步骤">
             {task.steps.length === 0 ? (
-              <Button
-                type="primary"
-                onClick={() =>
-                  updateTask(task.id, { completed: !task.completed })
-                }
-              >
-                {task.completed ? "取消完成" : "标记完成"}
-              </Button>
+              <div>
+                {task.userIds.length > 1 && (
+                  <Tabs
+                    tabPosition="top"
+                    activeKey={activeUserId}
+                    onChange={(k) => setActiveUserId(k)}
+                    items={task.userIds.map((uid) => {
+                      const uname =
+                        users.find((u) => u.id === uid)?.nickname ?? "未知";
+                      const isUserCompleted = (task.completedByUsers || []).includes(uid);
+                      return {
+                        key: uid,
+                        label: (
+                          <span style={{ position: "relative" }}>
+                            {uname}
+                            {isUserCompleted && (
+                              <span
+                                style={{
+                                  position: "absolute",
+                                  top: -2,
+                                  right: -8,
+                                  fontSize: "12px",
+                                  color: "#52c41a",
+                                }}
+                              >
+                                ✓
+                              </span>
+                            )}
+                          </span>
+                        ),
+                      };
+                    })}
+                    style={{ marginBottom: 12 }}
+                  />
+                )}
+                {task.userIds.length === 1 ? (
+                  <Button
+                    type="primary"
+                    onClick={() =>
+                      updateTask(task.id, { completed: !task.completed })
+                    }
+                  >
+                    {task.completed ? "取消完成" : "标记完成"}
+                  </Button>
+                ) : (
+                  <div style={{ padding: "16px", border: "1px solid #f0f0f0", borderRadius: "6px" }}>
+                    <div style={{ marginBottom: "12px", fontWeight: "500" }}>
+                      任务完成状态
+                    </div>
+                    {activeUserId && (
+                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                        <Checkbox
+                          checked={(task.completedByUsers || []).includes(activeUserId)}
+                          onChange={(e) => {
+                            setTaskCompletedByUser(task.id, activeUserId, e.target.checked);
+                          }}
+                        >
+                          我已完成此任务
+                        </Checkbox>
+                        {(task.completedByUsers || []).includes(activeUserId) &&
+                          task.userCompletedAt &&
+                          task.userCompletedAt[activeUserId] && (
+                            <div style={{ fontSize: "12px", color: "#666" }}>
+                              完成于: {dayjs(task.userCompletedAt[activeUserId]).format("MM-DD HH:mm")}
+                            </div>
+                          )}
+                      </div>
+                    )}
+                    <div style={{ marginTop: "12px", fontSize: "12px", color: "#666" }}>
+                      完成进度: {(task.completedByUsers || []).length}/{task.userIds.length} 个用户已完成
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
               <div>
                 {task.userIds.length > 1 && (
@@ -170,22 +237,59 @@ export default function TaskDetailPage() {
                     style={{ marginBottom: 12 }}
                   />
                 )}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-                  {task.steps.map((step) => (
-                    <div
-                      key={step.id}
-                      style={{ display: "flex", alignItems: "center", gap: 6 }}
-                    >
-                      <Checkbox
-                        checked={Boolean(step.doneByUserId)}
-                        onChange={(e) =>
-                          setStepDone(task.id, null, step.id, e.target.checked)
-                        }
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {task.steps.map((step, index) => {
+                    // 在多用户场景下，显示当前用户是否完成了这个步骤
+                    const isCompletedByCurrentUser = task.userIds.length > 1
+                      ? (step.completedByUsers || []).includes(activeUserId || '')
+                      : Boolean(step.doneByUserId);
+
+                    // 显示是否有任何用户完成了这个步骤
+                    const isCompletedByAnyone = Boolean(step.doneByUserId);
+                    const completedUsersCount = (step.completedByUsers || []).length;
+
+                    return (
+                      <div
+                        key={step.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "8px 12px",
+                          border: "1px solid #f0f0f0",
+                          borderRadius: "6px",
+                          backgroundColor: isCompletedByCurrentUser ? "#f6ffed" : "#fff"
+                        }}
                       >
-                        {step.name}
-                      </Checkbox>
-                    </div>
-                  ))}
+                        <div style={{ minWidth: "20px", textAlign: "center" }}>
+                          {index + 1}
+                        </div>
+                        <Checkbox
+                          checked={isCompletedByCurrentUser}
+                          onChange={(e) => {
+                            if (task.userIds.length > 1 && activeUserId) {
+                              // For multi-user tasks, pass the current user ID
+                              setStepDone(task.id, null, step.id, e.target.checked, activeUserId);
+                            } else {
+                              setStepDone(task.id, null, step.id, e.target.checked);
+                            }
+                          }}
+                        >
+                          {step.name}
+                        </Checkbox>
+                        {isCompletedByCurrentUser && step.userCompletedAt && step.userCompletedAt[activeUserId || ''] && (
+                          <div style={{ marginLeft: "auto", fontSize: "12px", color: "#666" }}>
+                            完成于: {dayjs(step.userCompletedAt[activeUserId || '']).format("MM-DD HH:mm")}
+                          </div>
+                        )}
+                        {task.userIds.length > 1 && isCompletedByAnyone && !isCompletedByCurrentUser && (
+                          <div style={{ marginLeft: "auto", fontSize: "12px", color: "#1890ff" }}>
+                            {completedUsersCount}个用户已完成
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
                 {task.steps.length === 0 && (
                   <Button
@@ -201,7 +305,8 @@ export default function TaskDetailPage() {
             )}
           </Card>
         ) : (
-          <Card title={`子任务（${doneSubtasks}/${totalSubtasks} 已完成）`}>
+          <Card
+            title={`子任务（${doneSubtasks}/${totalSubtasks} 已完成）`}>
             <Row gutter={[12, 12]}>
               <Col xs={24} md={24}>
                 <Tabs
@@ -251,8 +356,16 @@ export default function TaskDetailPage() {
                         key={st.id}
                         size="small"
                         style={{
-                          background: idx % 2 === 0 ? "#fff" : "#fafafa",
-                          borderColor: idx % 2 === 0 ? "#f0f0f0" : "#e6f7ff",
+                            border: `1px solid #333`,
+                            boxShadow: "0 2px 6px rgba(0, 0, 0, 0.1)"
+                          }}
+                        styles={{
+                          header: {
+                            borderLeft: `6px solid ${colors[idx % colors.length]}`
+                          },
+                          body: {
+                            borderLeft: `6px solid ${colors[idx % colors.length]}`
+                          }
                         }}
                         title={
                           editingSubtaskId === st.id ? (
@@ -305,24 +418,24 @@ export default function TaskDetailPage() {
                               type="text"
                               onClick={() => {
                                 const current = st.note;
-                                if (current && current.length > 0) {
-                                  // remove note
+                                if (current !== undefined && current !== null) {
+                                  // hide note editor
+                                  useStore
+                                    .getState()
+                                    .updateSubtask(task.id, st.id, {
+                                      note: undefined,
+                                    });
+                                } else {
+                                  // show note editor
                                   useStore
                                     .getState()
                                     .updateSubtask(task.id, st.id, {
                                       note: "",
                                     });
-                                } else {
-                                  // add empty note to show editor
-                                  useStore
-                                    .getState()
-                                    .updateSubtask(task.id, st.id, {
-                                      note: " ",
-                                    });
                                 }
                               }}
                               title={
-                                st.note && st.note.trim()
+                                st.note !== undefined && st.note !== null
                                   ? "隐藏备注"
                                   : "添加备注"
                               }
@@ -345,59 +458,71 @@ export default function TaskDetailPage() {
                         }
                       >
                         {(st.steps.length > 0 ||
-                          (st.note && st.note.trim())) && (
-                          <>
-                            <div
-                              style={{
-                                display: "flex",
-                                flexWrap: "wrap",
-                                gap: 12,
-                              }}
-                            >
-                              {st.steps.map((sp) => (
-                                <div
-                                  key={sp.id}
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 6,
-                                  }}
-                                >
-                                  <Checkbox
-                                    checked={sp.doneByUserId === st.ownerUserId}
-                                    onChange={(e) =>
-                                      setStepDone(
-                                        task.id,
-                                        st.id,
-                                        sp.id,
-                                        e.target.checked
-                                      )
-                                    }
+                          (st.note !== undefined && st.note !== null)) && (
+                            <>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: 8,
+                                }}
+                              >
+                                {st.steps.map((sp, index) => (
+                                  <div
+                                    key={sp.id}
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 8,
+                                      padding: "6px 10px",
+                                      border: "1px solid #f0f0f0",
+                                      borderRadius: "4px",
+                                      backgroundColor: sp.doneByUserId === st.ownerUserId ? "#f6ffed" : "#fff"
+                                    }}
                                   >
-                                    {sp.name}
-                                  </Checkbox>
-                                </div>
-                              ))}
-                            </div>
-                            {st.note && st.note.trim() && (
-                              <div style={{ marginTop: 8 }}>
-                                <Input.TextArea
-                                  size="small"
-                                  value={st.note}
-                                  onChange={(e) =>
-                                    useStore
-                                      .getState()
-                                      .updateSubtask(task.id, st.id, {
-                                        note: e.target.value,
-                                      })
-                                  }
-                                  placeholder="子任务备注..."
-                                  rows={2}
-                                />
+                                    <div style={{ minWidth: "16px", textAlign: "center", fontSize: "12px" }}>
+                                      {index + 1}
+                                    </div>
+                                    <Checkbox
+                                      checked={sp.doneByUserId === st.ownerUserId}
+                                      onChange={(e) =>
+                                        setStepDone(
+                                          task.id,
+                                          st.id,
+                                          sp.id,
+                                          e.target.checked
+                                        )
+                                      }
+                                    >
+                                      {sp.name}
+                                    </Checkbox>
+                                    {sp.doneByUserId === st.ownerUserId && sp.completedAt && (
+                                      <div style={{ marginLeft: "auto", fontSize: "11px", color: "#666" }}>
+                                        完成于: {dayjs(sp.completedAt).format("MM-DD HH:mm")}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
                               </div>
-                            )}
-                          </>
-                        )}
+                              {st.note !== undefined && st.note !== null && (
+                                <div style={{ marginTop: 8 }}>
+                                  <Input.TextArea
+                                    size="small"
+                                    value={st.note}
+                                    onChange={(e) =>
+                                      useStore
+                                        .getState()
+                                        .updateSubtask(task.id, st.id, {
+                                          note: e.target.value,
+                                        })
+                                    }
+                                    placeholder="子任务备注..."
+                                    rows={2}
+                                  />
+                                </div>
+                              )}
+                            </>
+                          )}
                       </Card>
                     ))}
                   <Button

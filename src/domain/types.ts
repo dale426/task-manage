@@ -22,6 +22,7 @@ export type Appointment = {
   userIds: ID[]; // reminder users
   startTime: string; // ISO string
   completed: boolean;
+  completedAt?: string; // ISO string when appointment was completed
   status: "pending" | "started" | "completed"; // appointment status
 };
 
@@ -31,6 +32,9 @@ export type TaskStep = {
   id: ID;
   name: string;
   doneByUserId?: ID; // reserved for per-user completion in subtasks
+  completedByUsers?: ID[]; // array of user IDs who completed this step
+  completedAt?: string; // ISO string when step was completed
+  userCompletedAt?: { [userId: ID]: string }; // completion time for each user
 };
 
 export type Subtask = {
@@ -39,6 +43,7 @@ export type Subtask = {
   ownerUserId: ID; // the user this subtask belongs to
   steps: TaskStep[];
   completed: boolean;
+  completedAt?: string; // ISO string when subtask was completed
   note?: string; // subtask notes
 };
 
@@ -54,4 +59,7 @@ export type Task = {
   subtasks?: Subtask[]; // present when type is composite
   dueAt?: string; // ISO string
   completed: boolean;
+  completedAt?: string; // ISO string when task was completed
+  completedByUsers?: ID[]; // array of user IDs who completed this task (for multi-user tasks without steps)
+  userCompletedAt?: { [userId: ID]: string }; // completion time for each user (for multi-user tasks without steps)
 };

@@ -63,8 +63,10 @@ export type StoreState = Entities & {
     taskId: ID,
     subtaskId: ID | null,
     stepId: ID,
-    done: boolean
+    done: boolean,
+    userId?: ID
   ) => void;
+  setTaskCompletedByUser: (taskId: ID, userId: ID, completed: boolean) => void;
 
   // Appointments
   createAppointment: (
@@ -225,7 +227,7 @@ export const useStore = create<StoreState>((set, get) => ({
       save(ns);
       return ns;
     }),
-  setStepDone: (taskId, subtaskId, stepId, done) =>
+  setStepDone: (taskId, subtaskId, stepId, done, userId) =>
     set((s) => {
       const tasks = s.tasks.map((t) => {
         if (t.id !== taskId) return t;
@@ -237,13 +239,57 @@ export const useStore = create<StoreState>((set, get) => ({
             steps = steps.map((sp, i) => ({
               ...sp,
               doneByUserId: i <= idx ? "__done__" : sp.doneByUserId,
+              completedAt: i <= idx ? (sp.completedAt || new Date().toISOString()) : sp.completedAt,
             }));
           } else {
-            steps = steps.map((sp) =>
-              sp.id === stepId
-                ? { ...sp, doneByUserId: done ? "__done__" : undefined }
-                : sp
-            );
+            steps = steps.map((sp) => {
+              if (sp.id !== stepId) return sp;
+              
+              if (task.userIds.length > 1 && userId) {
+                // Multi-user scenario: track completion per user
+                const completedByUsers = sp.completedByUsers || [];
+                const userCompletedAt = sp.userCompletedAt || {};
+                const now = new Date().toISOString();
+                
+                if (done) {
+                  // Add user to completed list if not already there
+                  const newCompletedByUsers = completedByUsers.includes(userId) 
+                    ? completedByUsers 
+                    : [...completedByUsers, userId];
+                  return {
+                    ...sp,
+                    completedByUsers: newCompletedByUsers,
+                    userCompletedAt: {
+                      ...userCompletedAt,
+                      [userId]: userCompletedAt[userId] || now
+                    },
+                    // Keep doneByUserId for backward compatibility
+                    doneByUserId: newCompletedByUsers.length > 0 ? "__done__" : undefined,
+                    completedAt: sp.completedAt || now
+                  };
+                } else {
+                  // Remove user from completed list
+                  const newCompletedByUsers = completedByUsers.filter(id => id !== userId);
+                  const newUserCompletedAt = { ...userCompletedAt };
+                  delete newUserCompletedAt[userId];
+                  
+                  return {
+                    ...sp,
+                    completedByUsers: newCompletedByUsers,
+                    userCompletedAt: newUserCompletedAt,
+                    doneByUserId: newCompletedByUsers.length > 0 ? "__done__" : undefined,
+                    completedAt: newCompletedByUsers.length > 0 ? sp.completedAt : undefined
+                  };
+                }
+              } else {
+                // Single user scenario: use original logic
+                return {
+                  ...sp,
+                  doneByUserId: done ? (userId || "__done__") : undefined,
+                  completedAt: done ? (sp.completedAt || new Date().toISOString()) : undefined,
+                };
+              }
+            });
           }
           return recomputeTask({ ...t, steps });
         }
@@ -256,11 +302,16 @@ export const useStore = create<StoreState>((set, get) => ({
               steps = steps.map((sp, i) => ({
                 ...sp,
                 doneByUserId: i <= idx ? st.ownerUserId : sp.doneByUserId,
+                completedAt: i <= idx ? (sp.completedAt || new Date().toISOString()) : sp.completedAt,
               }));
             } else {
               steps = steps.map((sp) =>
                 sp.id === stepId
-                  ? { ...sp, doneByUserId: done ? st.ownerUserId : undefined }
+                  ? { 
+                      ...sp, 
+                      doneByUserId: done ? st.ownerUserId : undefined,
+                      completedAt: done ? (sp.completedAt || new Date().toISOString()) : undefined,
+                    }
                   : sp
               );
             }
@@ -269,6 +320,48 @@ export const useStore = create<StoreState>((set, get) => ({
           return st;
         });
         return recomputeTask({ ...t, subtasks });
+      });
+      const ns = { ...s, tasks };
+      save(ns);
+      return ns;
+    }),
+  setTaskCompletedByUser: (taskId, userId, completed) =>
+    set((s) => {
+      const tasks = s.tasks.map((t) => {
+        if (t.id !== taskId) return t;
+        
+        const completedByUsers = t.completedByUsers || [];
+        const userCompletedAt = t.userCompletedAt || {};
+        const now = new Date().toISOString();
+        
+        let newCompletedByUsers, newUserCompletedAt;
+        
+        if (completed) {
+          // Add user to completed list if not already there
+          newCompletedByUsers = completedByUsers.includes(userId) 
+            ? completedByUsers 
+            : [...completedByUsers, userId];
+          newUserCompletedAt = {
+            ...userCompletedAt,
+            [userId]: userCompletedAt[userId] || now
+          };
+        } else {
+          // Remove user from completed list
+          newCompletedByUsers = completedByUsers.filter(id => id !== userId);
+          newUserCompletedAt = { ...userCompletedAt };
+          delete newUserCompletedAt[userId];
+        }
+        
+        // Check if all users have completed the task
+        const allUsersCompleted = t.userIds.every(uid => newCompletedByUsers.includes(uid));
+        
+        return {
+          ...t,
+          completedByUsers: newCompletedByUsers,
+          userCompletedAt: newUserCompletedAt,
+          completed: allUsersCompleted,
+          completedAt: allUsersCompleted && !t.completedAt ? now : t.completedAt
+        };
       });
       const ns = { ...s, tasks };
       save(ns);
@@ -315,7 +408,7 @@ export const useStore = create<StoreState>((set, get) => ({
     set((s) => {
       const appointments = s.appointments.map((a) =>
         a.id === id
-          ? { ...a, completed: true, status: "completed" as const }
+          ? { ...a, completed: true, completedAt: new Date().toISOString(), status: "completed" as const }
           : a
       );
       const ns = { ...s, appointments };
@@ -354,19 +447,36 @@ function generateSubtasks(
 
 function recomputeTask(task: Task): Task {
   if (task.type === "single") {
-    const allDone =
-      task.steps.length > 0
-        ? task.steps.every((s) => Boolean(s.doneByUserId))
-        : task.completed;
-    return { ...task, completed: allDone };
+    let allDone = false;
+    
+    if (task.steps.length > 0) {
+      if (task.userIds.length > 1) {
+        // Multi-user scenario: all users must complete all steps
+        allDone = task.userIds.every(userId => 
+          task.steps.every(step => 
+            (step.completedByUsers || []).includes(userId)
+          )
+        );
+      } else {
+        // Single user scenario: original logic
+        allDone = task.steps.every((s) => Boolean(s.doneByUserId));
+      }
+    } else {
+      allDone = task.completed;
+    }
+    
+    const completedAt = allDone && !task.completedAt ? new Date().toISOString() : task.completedAt;
+    return { ...task, completed: allDone, completedAt };
   }
-  const subtasks = (task.subtasks ?? []).map((st) => ({
-    ...st,
-    completed:
+  const subtasks = (task.subtasks ?? []).map((st) => {
+    const completed =
       st.steps.length > 0
         ? st.steps.every((s) => s.doneByUserId === st.ownerUserId)
-        : st.completed,
-  }));
+        : st.completed;
+    const completedAt = completed && !st.completedAt ? new Date().toISOString() : st.completedAt;
+    return { ...st, completed, completedAt };
+  });
   const completed = subtasks.length > 0 && subtasks.every((st) => st.completed);
-  return { ...task, subtasks, completed };
+  const completedAt = completed && !task.completedAt ? new Date().toISOString() : task.completedAt;
+  return { ...task, subtasks, completed, completedAt };
 }

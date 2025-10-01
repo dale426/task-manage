@@ -194,6 +194,19 @@ export default function AppointmentsPage() {
       },
     },
     {
+      title: "完成时间",
+      dataIndex: "completedAt",
+      key: "completedAt",
+      render: (completedAt: string, record: Appointment) => {
+        if (record.completed && completedAt) {
+          return <Text style={{ color: "#52c41a" }}>
+            {dayjs(completedAt).format("YYYY-MM-DD HH:mm")}
+          </Text>;
+        }
+        return "-";
+      },
+    },
+    {
       title: "操作",
       key: "actions",
       render: (_: any, record: Appointment) => (
@@ -291,6 +304,14 @@ export default function AppointmentsPage() {
                   <Text strong>距离开始：</Text>
                   <Tag color={isOverdue ? "red" : "blue"}>{remaining}</Tag>
                 </div>
+                {appointment.completed && appointment.completedAt && (
+                  <div style={{ marginBottom: 8 }}>
+                    <Text strong>完成时间：</Text>
+                    <Text style={{ color: "#52c41a" }}>
+                      {dayjs(appointment.completedAt).format("YYYY-MM-DD HH:mm")}
+                    </Text>
+                  </div>
+                )}
                 <div
                   style={{
                     display: "flex",
