@@ -245,7 +245,7 @@ export const useStore = create<StoreState>((set, get) => ({
             steps = steps.map((sp) => {
               if (sp.id !== stepId) return sp;
               
-              if (task.userIds.length > 1 && userId) {
+              if (t.userIds.length > 1 && userId) {
                 // Multi-user scenario: track completion per user
                 const completedByUsers = sp.completedByUsers || [];
                 const userCompletedAt = sp.userCompletedAt || {};

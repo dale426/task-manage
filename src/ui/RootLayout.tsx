@@ -1,6 +1,7 @@
 import { Layout, Menu, Grid } from "antd";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { ReactNode, useMemo } from "react";
+import { PreloadComponents } from "./components/PreloadComponents";
 
 const { Header, Sider, Content } = Layout;
 
@@ -29,6 +30,7 @@ export default function RootLayout() {
 
   return (
     <Layout className="app-layout">
+      <PreloadComponents />
       <Header
         style={{ display: "flex", alignItems: "center", padding: "0 16px" }}
       >
