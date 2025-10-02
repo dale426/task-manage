@@ -1,5 +1,4 @@
-import { Button, Form, Input, Modal, Select, Space, Row, Col, message } from "antd";
-import { Grid } from "antd";
+import { Button, Form, Modal, message } from "antd";
 import dayjs from "dayjs";
 import { useMemo, useState } from "react";
 import { useStore } from "../../domain/store";
@@ -26,27 +25,9 @@ export default function TasksPage() {
   const [form] = Form.useForm<TaskFormValues>();
   const navigate = useNavigate();
 
-  // filters
-  const [filterForm] = Form.useForm<{
-    q?: string;
-    projectId?: ID;
-    userId?: ID;
-    status?: "all" | "done" | "todo";
-  }>();
-
   const rows = useMemo(() => {
-    const values = filterForm.getFieldsValue();
-    const { q, projectId, userId, status } = values;
-    const filtered = tasks.filter((t) => {
-      if (q && !t.name.toLowerCase().includes(q.toLowerCase())) return false;
-      if (projectId && t.projectId !== projectId) return false;
-      if (userId && !t.userIds.includes(userId)) return false;
-      if (status === "done" && !t.completed) return false;
-      if (status === "todo" && t.completed) return false;
-      return true;
-    });
     // Sort: incomplete tasks by deadline proximity, completed tasks last
-    return filtered.sort((a, b) => {
+    return [...tasks].sort((a, b) => {
       // Completed tasks go to the end
       if (a.completed && !b.completed) return 1;
       if (!a.completed && b.completed) return -1;
@@ -57,7 +38,7 @@ export default function TasksPage() {
       if (!b.dueAt) return -1;
       return new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime();
     });
-  }, [tasks, filterForm]);
+  }, [tasks]);
 
   const handleSubmit = () => {
     form.validateFields().then((values) => {
@@ -116,88 +97,18 @@ export default function TasksPage() {
 
   return (
     <div>
-      <div style={{ marginBottom: 12 }}>
-        <Form
-          form={filterForm}
-          layout="vertical"
-          onValuesChange={() => {
-            // Auto-trigger filtering when form values change
+      <div style={{ marginBottom: 16 }}>
+        <Button
+          type="primary"
+          onClick={() => {
+            setEditing(null);
+            form.resetFields();
+            form.setFieldsValue({ type: "single", userIds: [], steps: [] });
+            setOpen(true);
           }}
-          initialValues={{ status: "all" }}
         >
-          <Row gutter={[8, 8]}>
-            <Col xs={24} sm={12} md={6}>
-              <Form.Item name="q" label="搜索" style={{ marginBottom: 8 }}>
-                <Input allowClear placeholder="任务名称" />
-              </Form.Item>
-            </Col>
-            <Col xs={12} sm={6} md={4}>
-              <Form.Item
-                name="projectId"
-                label="项目"
-                style={{ marginBottom: 8 }}
-              >
-                <Select
-                  allowClear
-                  options={projects.map((p) => ({
-                    value: p.id,
-                    label: p.name,
-                  }))}
-                  placeholder="全部"
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={12} sm={6} md={4}>
-              <Form.Item name="userId" label="用户" style={{ marginBottom: 8 }}>
-                <Select
-                  allowClear
-                  options={users.map((u) => ({
-                    value: u.id,
-                    label: u.nickname,
-                  }))}
-                  placeholder="全部"
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={12} sm={6} md={4}>
-              <Form.Item name="status" label="状态" style={{ marginBottom: 8 }}>
-                <Select
-                  options={[
-                    { value: "all", label: "全部" },
-                    { value: "todo", label: "未完成" },
-                    { value: "done", label: "已完成" },
-                  ]}
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={12} sm={6} md={6}>
-              <Form.Item label=" " style={{ marginBottom: 8 }}>
-                <Space size="small">
-                  <Button
-                    onClick={() => {
-                      filterForm.resetFields();
-                    }}
-                  >
-                    重置
-                  </Button>
-                </Space>
-              </Form.Item>
-            </Col>
-          </Row>
-        </Form>
-        <Space>
-          <Button
-            type="primary"
-            onClick={() => {
-              setEditing(null);
-              form.resetFields();
-              form.setFieldsValue({ type: "single", userIds: [], steps: [] });
-              setOpen(true);
-            }}
-          >
-            新增任务
-          </Button>
-        </Space>
+          新增任务
+        </Button>
       </div>
 
       <TaskList

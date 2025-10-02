@@ -11,7 +11,7 @@ import {
   Input,
 } from "antd";
 import dayjs from "dayjs";
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useStore } from "../../domain/store";
 import type { ID, Task, Subtask } from "../../domain/types";
@@ -29,6 +29,23 @@ export default function TaskDetailPage() {
   const [activeUserId, setActiveUserId] = useState<ID | undefined>(
     task?.userIds?.[0]
   );
+  const [activeNoteSubtaskId, setActiveNoteSubtaskId] = useState<ID | null>(null);
+
+  // 点击空白区域取消激活备注输入框
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      // 如果点击的不是备注相关的元素，则取消激活
+      if (!target.closest('.subtask-note-area') && !target.closest('.note-button')) {
+        setActiveNoteSubtaskId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   if (!task) return <Empty description="任务不存在" />;
 
@@ -440,29 +457,25 @@ export default function TaskDetailPage() {
                             <Button
                               size="small"
                               type="text"
+                              className="note-button"
                               onClick={() => {
-                                const current = st.note;
-                                if (current !== undefined && current !== null) {
-                                  // hide note editor
-                                  useStore
-                                    .getState()
-                                    .updateSubtask(task.id, st.id, {
-                                      note: undefined,
-                                    });
+                                if (activeNoteSubtaskId === st.id) {
+                                  // 如果当前已激活，则取消激活
+                                  setActiveNoteSubtaskId(null);
                                 } else {
-                                  // show note editor
-                                  useStore
-                                    .getState()
-                                    .updateSubtask(task.id, st.id, {
-                                      note: "",
-                                    });
+                                  // 激活当前子任务的备注输入框
+                                  setActiveNoteSubtaskId(st.id);
+                                  // 如果还没有备注字段，则初始化为空字符串
+                                  if (st.note === undefined || st.note === null) {
+                                    useStore
+                                      .getState()
+                                      .updateSubtask(task.id, st.id, {
+                                        note: "",
+                                      });
+                                  }
                                 }
                               }}
-                              title={
-                                st.note !== undefined && st.note !== null
-                                  ? "隐藏备注"
-                                  : "添加备注"
-                              }
+                              title="添加备注"
                             >
                               📝
                             </Button>
@@ -603,20 +616,32 @@ export default function TaskDetailPage() {
                         )}
                         
                         {/* 备注区域 */}
-                        {st.note !== undefined && st.note !== null && (
-                          <div style={{ marginTop: 8 }}>
+                        {(activeNoteSubtaskId === st.id || (st.note && st.note.trim() !== "")) && (
+                          <div className="subtask-note-area" style={{ marginTop: 8 }}>
                             <Input.TextArea
                               size="small"
-                              value={st.note}
-                              onChange={(e) =>
+                              value={st.note || ""}
+                              onChange={(e) => {
                                 useStore
                                   .getState()
                                   .updateSubtask(task.id, st.id, {
                                     note: e.target.value,
-                                  })
-                              }
+                                  });
+                              }}
+                              onBlur={(e) => {
+                                // 如果内容为空，则移除备注字段并取消激活
+                                if (!e.target.value.trim()) {
+                                  useStore
+                                    .getState()
+                                    .updateSubtask(task.id, st.id, {
+                                      note: undefined,
+                                    });
+                                  setActiveNoteSubtaskId(null);
+                                }
+                              }}
                               placeholder="子任务备注..."
                               rows={2}
+                              autoFocus={activeNoteSubtaskId === st.id && (!st.note || st.note.trim() === "")}
                             />
                           </div>
                         )}
