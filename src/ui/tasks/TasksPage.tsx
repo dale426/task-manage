@@ -7,6 +7,7 @@ import { TaskType } from "../../domain/enums";
 import { useNavigate } from "react-router-dom";
 import TaskForm from "./components/TaskForm";
 import TaskList from "./components/TaskList";
+import { nanoid } from "../../utils/id";
 
 type TaskFormValues = {
   name: string;
@@ -50,7 +51,7 @@ export default function TasksPage() {
         note: values.note,
         type: values.type,
         steps: (values.steps || []).map((s) => ({
-          id: s.id || crypto.randomUUID(),
+          id: s.id || nanoid(),
           name: s.name,
         })),
         dueAt: values.dueAt?.toISOString(),

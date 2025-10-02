@@ -50,7 +50,7 @@ body,
   background-repeat: no-repeat;
   background-size: contain;
   background-position: center;
-  opacity: 0.6;
+  opacity: 0.45;
   pointer-events: none;
   z-index: 1;
 }
@@ -67,7 +67,7 @@ body,
   background-repeat: no-repeat;
   background-size: contain;
   background-position: center;
-  opacity: 0.6;
+  opacity: 0.45;
   pointer-events: none;
   z-index: 1;
 }
@@ -84,7 +84,7 @@ body,
   background-repeat: no-repeat;
   background-size: contain;
   background-position: center;
-  opacity: 0.6;
+  opacity: 0.45;
   pointer-events: none;
   z-index: 1;
 }
