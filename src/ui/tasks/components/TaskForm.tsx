@@ -1,7 +1,8 @@
 import { Button, Form, Input, Select, Tag } from "antd";
 import { useMemo } from "react";
 import { useStore } from "../../../domain/store";
-import type { ID, Task, TaskType } from "../../../domain/types";
+import type { ID, Task } from "../../../domain/types";
+import { TaskType, TaskTypeLabels } from "../../../domain/enums";
 import dayjs from "dayjs";
 import MobileDateTimePicker from "../../components/MobileDateTimePicker";
 
@@ -64,8 +65,8 @@ export default function TaskForm({ form, editing, onCancel, onSubmit }: TaskForm
       <Form.Item name="type" label="任务类型" rules={[{ required: true }]}>
         <Select
           options={[
-            { value: "single", label: "单例任务" },
-            { value: "composite", label: "复合任务" },
+            { value: TaskType.SINGLE, label: TaskTypeLabels[TaskType.SINGLE] + "任务" },
+            { value: TaskType.COMPOSITE, label: TaskTypeLabels[TaskType.COMPOSITE] + "任务" },
           ]}
         />
       </Form.Item>
@@ -75,7 +76,7 @@ export default function TaskForm({ form, editing, onCancel, onSubmit }: TaskForm
         shouldUpdate={(prev, cur) => prev.type !== cur.type}
       >
         {({ getFieldValue }) =>
-          getFieldValue("type") === "composite" ? (
+          getFieldValue("type") === TaskType.COMPOSITE ? (
             <div>
               <div style={{ fontWeight: 500, marginBottom: 8 }}>
                 子任务模板

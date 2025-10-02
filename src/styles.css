@@ -20,3 +20,71 @@ body,
     padding: 16px 24px;
   }
 }
+
+/* 已完成任务卡片的背景图片 */
+.completed-task-card::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 60px;
+  height: 60px;
+  background-image: var(--complete-img-url);
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 已完成子任务卡片的背景图片 */
+.completed-subtask-card::before {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 50px;
+  height: 50px;
+  background-image: var(--complete-img-url);
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 进行中任务卡片的背景图片 */
+.processing-task-card::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  right: 2px;
+  width: 60px;
+  height: 60px;
+  background-image: var(--processing-img-url);
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 进行中子任务卡片的背景图片 */
+.processing-subtask-card::before {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 50px;
+  height: 50px;
+  background-image: var(--processing-img-url);
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 1;
+}

@@ -2,7 +2,8 @@ import { Button, Form, Modal, message } from "antd";
 import dayjs from "dayjs";
 import { useMemo, useState } from "react";
 import { useStore } from "../../domain/store";
-import type { ID, Task, TaskType } from "../../domain/types";
+import type { ID, Task } from "../../domain/types";
+import { TaskType } from "../../domain/enums";
 import { useNavigate } from "react-router-dom";
 import TaskForm from "./components/TaskForm";
 import TaskList from "./components/TaskList";
@@ -54,7 +55,7 @@ export default function TasksPage() {
         })),
         dueAt: values.dueAt?.toISOString(),
         subtaskTemplates:
-          values.type === "composite"
+          values.type === TaskType.COMPOSITE
             ? (values.subtaskTemplates || [])
                 .map((x) => x?.name?.trim())
                 .filter(Boolean)
@@ -103,7 +104,7 @@ export default function TasksPage() {
           onClick={() => {
             setEditing(null);
             form.resetFields();
-            form.setFieldsValue({ type: "single", userIds: [], steps: [] });
+            form.setFieldsValue({ type: TaskType.SINGLE, userIds: [], steps: [] });
             setOpen(true);
           }}
         >

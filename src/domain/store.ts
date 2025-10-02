@@ -9,6 +9,7 @@ import type {
   Subtask,
   Appointment,
 } from "./types";
+import { TaskType, ProjectRepeat } from "./enums";
 
 type Entities = {
   projects: Project[];
@@ -86,7 +87,7 @@ export const useStore = create<StoreState>((set, get) => ({
       name: data.name,
       note: data.note,
       userIds: data.userIds,
-      repeat: data.repeat || "none",
+      repeat: data.repeat || ProjectRepeat.NONE,
     };
     set((s) => {
       const ns = { ...s, projects: [project, ...s.projects] };
@@ -148,7 +149,7 @@ export const useStore = create<StoreState>((set, get) => ({
       completed: false,
     };
     const task: Task =
-      base.type === "composite"
+      base.type === TaskType.COMPOSITE
         ? {
             ...base,
             subtasks: generateSubtasks(
@@ -446,7 +447,7 @@ function generateSubtasks(
 }
 
 function recomputeTask(task: Task): Task {
-  if (task.type === "single") {
+  if (task.type === TaskType.SINGLE) {
     let allDone = false;
     
     if (task.steps.length > 0) {

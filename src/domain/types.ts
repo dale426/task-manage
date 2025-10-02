@@ -1,3 +1,5 @@
+import { TaskType, ProjectRepeat } from './enums';
+
 export type ID = string;
 
 export type User = {
@@ -12,7 +14,7 @@ export type Project = {
   name: string;
   note?: string;
   userIds?: ID[]; // associated users
-  repeat?: "none" | "daily" | "weekly" | "monthly"; // repeat frequency
+  repeat?: ProjectRepeat; // repeat frequency
 };
 
 export type Appointment = {
@@ -26,7 +28,7 @@ export type Appointment = {
   status: "pending" | "started" | "completed"; // appointment status
 };
 
-export type TaskType = "single" | "composite";
+export { TaskType };
 
 export type TaskStep = {
   id: ID;

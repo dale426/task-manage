@@ -15,8 +15,12 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useStore } from "../../domain/store";
 import type { ID, Task, Subtask } from "../../domain/types";
+import { TaskType, TaskTypeLabels } from "../../domain/enums";
 import { nanoid } from "../../utils/id";
 import { colors, getRandomColor } from "@/utils/randomColor";
+import CustomCheckbox from "../components/CustomCheckbox";
+import completeImg from "../../assets/complete.png";
+import processingImg from "../../assets/processing.png";
 
 export default function TaskDetailPage() {
   const { taskId } = useParams();
@@ -64,8 +68,8 @@ export default function TaskDetailPage() {
         <Col>
           <Space>
             <Button onClick={() => navigate(-1)}>返回</Button>
-            <Tag color={task.type === "single" ? "blue" : "purple"}>
-              {task.type === "single" ? "单例" : "复合"}
+            <Tag color={task.type === TaskType.SINGLE ? "blue" : "purple"}>
+              {TaskTypeLabels[task.type]}
             </Tag>
             {task.completed && <Tag color="green">已完成</Tag>}
           </Space>
@@ -89,7 +93,7 @@ export default function TaskDetailPage() {
               gap: 8,
             }}
           >
-            {task.type === "single" && task.steps.length === 0 && task.userIds.length === 1 && (
+            {task.type === TaskType.SINGLE && task.steps.length === 0 && task.userIds.length === 1 && (
               <Checkbox
                 checked={task.completed}
                 onChange={() =>
@@ -396,18 +400,29 @@ export default function TaskDetailPage() {
                       <Card
                         key={st.id}
                         size="small"
+                        className={st.completed ? "completed-subtask-card" : "processing-subtask-card"}
                         style={{
-                            border: `1px solid #333`,
-                            boxShadow: "0 2px 6px rgba(0, 0, 0, 0.1)"
+                            border: `1px solid ${st.completed ? "#999" : "#555"}`,
+                            boxShadow: "0 2px 6px rgba(0, 0, 0, 0.1)",
+                            opacity: st.completed ? 0.6 : 1,
+                            transition: "opacity 0.2s ease",
+                            position: "relative",
+                            ...(st.completed 
+                              ? {
+                                  '--complete-img-url': `url(${completeImg})`
+                                } as React.CSSProperties
+                              : {
+                                  '--processing-img-url': `url(${processingImg})`
+                                } as React.CSSProperties)
                           }}
-                        styles={{
+                        styles={!st.completed ? {
                           header: {
-                            borderLeft: `6px solid ${colors[idx % colors.length]}`
+                            borderLeft: `8px solid ${colors[idx % colors.length]}`
                           },
                           body: {
-                            borderLeft: `6px solid ${colors[idx % colors.length]}`
+                            borderLeft: `8px solid ${colors[idx % colors.length]}`
                           }
-                        }}
+                        } : {}}
                         title={
                           editingSubtaskId === st.id ? (
                             <Input
@@ -434,7 +449,9 @@ export default function TaskDetailPage() {
                             />
                           ) : (
                             <Space>
-                              {st.name}
+                              <span style={st.completed ? { textDecoration: "line-through" } : {}}>
+                                {st.name}
+                              </span>
                               {st.completed && (
                                 <span style={{ color: "#52c41a" }}>✔</span>
                               )}
@@ -527,26 +544,21 @@ export default function TaskDetailPage() {
                                        <div style={{ minWidth: "16px", textAlign: "center", fontSize: "12px" }}>
                                          {stepIndex + 1}
                                        </div>
-                                       <Checkbox
+                                       <CustomCheckbox
                                          checked={isCompleted}
-                                         onChange={(e) =>
+                                         onChange={(checked) =>
                                            setStepDone(
                                              task.id,
                                              st.id,
                                              sp.id,
-                                             e.target.checked
+                                             checked
                                            )
                                          }
-                                         style={{
-                                           '--ant-checkbox-color': currentColor,
-                                           '--ant-checkbox-checked-color': currentColor,
-                                           '--ant-checkbox-checked-bg': currentColor,
-                                           '--ant-checkbox-checked-border-color': currentColor,
-                                         } as React.CSSProperties}
-                                         className="custom-checkbox"
-                                       >
+                                         color={currentColor}
+                                       />
+                                       <span style={{ marginLeft: "8px", flex: 1 }}>
                                          {sp.name}
-                                       </Checkbox>
+                                       </span>
                                        {isCompleted && sp.completedAt && (
                                          <div style={{ marginLeft: "auto", fontSize: "11px", color: "#666" }}>
                                            完成于: {dayjs(sp.completedAt).format("MM-DD HH:mm")}
@@ -595,14 +607,15 @@ export default function TaskDetailPage() {
                               });
                             }}
                           >
-                            <Checkbox
+                            <CustomCheckbox
                               checked={st.completed}
-                              onChange={(e) => {
+                              onChange={(checked) => {
                                 useStore.getState().updateSubtask(task.id, st.id, {
-                                  completed: e.target.checked,
-                                  completedAt: e.target.checked ? new Date().toISOString() : undefined
+                                  completed: checked,
+                                  completedAt: checked ? new Date().toISOString() : undefined
                                 });
                               }}
+                              color={colors[idx % colors.length]}
                             />
                             <span style={{ flex: 1, fontSize: "14px" }}>
                               标记为{st.completed ? "未完成" : "完成"}
