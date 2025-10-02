@@ -8,7 +8,6 @@ import {
   Select,
   Space,
   Table,
-  DatePicker,
   message,
   Tag,
   Typography,
@@ -24,6 +23,7 @@ import {
 import { useStore } from "../../domain/store";
 import type { ID, Appointment } from "../../domain/types";
 import dayjs from "dayjs";
+import MobileDateTimePicker from "../components/MobileDateTimePicker";
 
 const { Text } = Typography;
 
@@ -414,7 +414,7 @@ export default function AppointmentsPage() {
             label="开始时间"
             rules={[{ required: true, message: "请选择开始时间" }]}
           >
-            <DatePicker showTime style={{ width: "100%" }} />
+            <MobileDateTimePicker style={{ width: "100%" }} />
           </Form.Item>
         </Form>
       </Modal>

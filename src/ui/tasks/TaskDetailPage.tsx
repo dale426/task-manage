@@ -481,17 +481,17 @@ export default function TaskDetailPage() {
                           </Space>
                         }
                       >
-                        {(st.steps.length > 0 ||
-                          (st.note !== undefined && st.note !== null)) && (
-                            <>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  gap: 8,
-                                }}
-                              >
-                                 {st.steps.map((sp, stepIndex) => {
+                        {st.steps.length > 0 ? (
+                          // 有步骤的子任务
+                          <>
+                            <div
+                              style={{
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 8,
+                              }}
+                            >
+                               {st.steps.map((sp, stepIndex) => {
                                    const currentColor = colors[idx % colors.length];
                                    const isCompleted = sp.doneByUserId === st.ownerUserId;
                                    
@@ -561,7 +561,65 @@ export default function TaskDetailPage() {
                                 </div>
                               )}
                             </>
-                          )}
+                        ) : (
+                          // 无步骤的子任务，直接提供完成标记
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8,
+                              padding: "12px 16px",
+                              border: "1px solid #f0f0f0",
+                              borderRadius: "6px",
+                              backgroundColor: st.completed ? "#f6ffed" : "#fff",
+                              cursor: "pointer",
+                              transition: "all 0.2s ease"
+                            }}
+                            onClick={() => {
+                              useStore.getState().updateSubtask(task.id, st.id, {
+                                completed: !st.completed,
+                                completedAt: !st.completed ? new Date().toISOString() : undefined
+                              });
+                            }}
+                          >
+                            <Checkbox
+                              checked={st.completed}
+                              onChange={(e) => {
+                                useStore.getState().updateSubtask(task.id, st.id, {
+                                  completed: e.target.checked,
+                                  completedAt: e.target.checked ? new Date().toISOString() : undefined
+                                });
+                              }}
+                            />
+                            <span style={{ flex: 1, fontSize: "14px" }}>
+                              标记为{st.completed ? "未完成" : "完成"}
+                            </span>
+                            {st.completed && st.completedAt && (
+                              <span style={{ fontSize: "12px", color: "#666" }}>
+                                完成于 {dayjs(st.completedAt).format("MM-DD HH:mm")}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* 备注区域 */}
+                        {st.note !== undefined && st.note !== null && (
+                          <div style={{ marginTop: 8 }}>
+                            <Input.TextArea
+                              size="small"
+                              value={st.note}
+                              onChange={(e) =>
+                                useStore
+                                  .getState()
+                                  .updateSubtask(task.id, st.id, {
+                                    note: e.target.value,
+                                  })
+                              }
+                              placeholder="子任务备注..."
+                              rows={2}
+                            />
+                          </div>
+                        )}
                       </Card>
                     ))}
                   <Button

@@ -1,8 +1,9 @@
-import { Button, Form, Input, Select, DatePicker, Tag } from "antd";
+import { Button, Form, Input, Select, Tag } from "antd";
 import { useMemo } from "react";
 import { useStore } from "../../../domain/store";
 import type { ID, Task, TaskType } from "../../../domain/types";
 import dayjs from "dayjs";
+import MobileDateTimePicker from "../../components/MobileDateTimePicker";
 
 type TaskFormValues = {
   name: string;
@@ -163,7 +164,7 @@ export default function TaskForm({ form, editing, onCancel, onSubmit }: TaskForm
         </Form.List>
       </div>
       <Form.Item name="dueAt" label="任务截止时间">
-        <DatePicker showTime style={{ width: "100%" }} />
+        <MobileDateTimePicker style={{ width: "100%" }} />
       </Form.Item>
       <Form.Item name="note" label="备注">
         <Input.TextArea rows={3} />
