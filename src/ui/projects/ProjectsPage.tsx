@@ -14,6 +14,7 @@ import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useMemo, useState } from "react";
 import { useStore } from "../../domain/store";
 import type { Project, ID } from "../../domain/types";
+import { ProjectRepeat, ProjectRepeatLabels } from "../../domain/enums";
 
 export default function ProjectsPage() {
   const { projects, users, createProject, updateProject, deleteProject } =
@@ -24,7 +25,7 @@ export default function ProjectsPage() {
     name: string;
     note?: string;
     userIds?: ID[];
-    repeat?: "none" | "daily" | "weekly" | "monthly";
+    repeat?: ProjectRepeat;
   }>();
 
   const rows = useMemo(() => projects, [projects]);
@@ -68,14 +69,8 @@ export default function ProjectsPage() {
             {
               title: "重复频率",
               dataIndex: "repeat",
-              render: (repeat: string) => {
-                const repeatMap = {
-                  none: "不重复",
-                  daily: "每日",
-                  weekly: "每周",
-                  monthly: "每月",
-                };
-                return repeatMap[repeat as keyof typeof repeatMap] || "不重复";
+              render: (repeat: ProjectRepeat) => {
+                return ProjectRepeatLabels[repeat] || ProjectRepeatLabels[ProjectRepeat.NONE];
               },
             },
             {
@@ -91,7 +86,7 @@ export default function ProjectsPage() {
                         name: record.name,
                         note: record.note,
                         userIds: record.userIds || [],
-                        repeat: record.repeat || "none",
+                        repeat: record.repeat || ProjectRepeat.NONE,
                       });
                       setOpen(true);
                     }}
@@ -120,12 +115,6 @@ export default function ProjectsPage() {
                 .filter(Boolean)
                 .join(", ") || "-";
 
-            const repeatMap = {
-              none: "不重复",
-              daily: "每日",
-              weekly: "每周",
-              monthly: "每月",
-            };
 
             return (
               <Card
@@ -143,7 +132,7 @@ export default function ProjectsPage() {
                           name: project.name,
                           note: project.note,
                           userIds: project.userIds || [],
-                          repeat: project.repeat || "none",
+                          repeat: project.repeat || ProjectRepeat.NONE,
                         });
                         setOpen(true);
                       }}
@@ -168,8 +157,7 @@ export default function ProjectsPage() {
                 <div>
                   <strong>重复频率：</strong>
                   <Tag color="blue">
-                    {repeatMap[project.repeat as keyof typeof repeatMap] ||
-                      "不重复"}
+                    {ProjectRepeatLabels[project.repeat || ProjectRepeat.NONE]}
                   </Tag>
                 </div>
               </Card>
@@ -204,13 +192,13 @@ export default function ProjectsPage() {
               options={users.map((u) => ({ value: u.id, label: u.nickname }))}
             />
           </Form.Item>
-          <Form.Item name="repeat" label="重复频率" initialValue="none">
+          <Form.Item name="repeat" label="重复频率" initialValue={ProjectRepeat.NONE}>
             <Select
               options={[
-                { value: "none", label: "不重复" },
-                { value: "daily", label: "每日" },
-                { value: "weekly", label: "每周" },
-                { value: "monthly", label: "每月" },
+                { value: ProjectRepeat.NONE, label: ProjectRepeatLabels[ProjectRepeat.NONE] },
+                { value: ProjectRepeat.DAILY, label: ProjectRepeatLabels[ProjectRepeat.DAILY] },
+                { value: ProjectRepeat.WEEKLY, label: ProjectRepeatLabels[ProjectRepeat.WEEKLY] },
+                { value: ProjectRepeat.MONTHLY, label: ProjectRepeatLabels[ProjectRepeat.MONTHLY] },
               ]}
             />
           </Form.Item>
