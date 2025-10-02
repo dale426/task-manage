@@ -37,19 +37,15 @@ export default defineConfig({
     outDir: 'dist',
     // 确保资源文件名包含hash
     assetsDir: 'assets',
+    // 关闭sourcemap以减少文件大小和潜在问题
+    sourcemap: false,
     rollupOptions: {
       output: {
+        // 简化chunk分割，减少动态导入问题
         manualChunks: {
-          // 将React相关库打包到单独的chunk
-          'react-vendor': ['react', 'react-dom'],
-          // 将Antd相关库打包到单独的chunk
-          'antd-vendor': ['antd', '@ant-design/icons'],
-          // 将路由相关库打包到单独的chunk
-          'router-vendor': ['react-router-dom'],
-          // 将状态管理相关库打包到单独的chunk
-          'store-vendor': ['zustand'],
-          // 将工具库打包到单独的chunk
-          'utils-vendor': ['dayjs', 'nanoid']
+          'vendor': ['react', 'react-dom', 'react-router-dom'],
+          'ui': ['antd', '@ant-design/icons'],
+          'utils': ['zustand', 'dayjs', 'nanoid']
         },
         // 确保资源文件名正确
         assetFileNames: 'assets/[name]-[hash].[ext]',
@@ -59,10 +55,8 @@ export default defineConfig({
     },
     // 设置chunk大小警告限制
     chunkSizeWarningLimit: 1000,
-    // 确保模块预加载正确
-    modulePreload: {
-      polyfill: false
-    }
+    // 完全禁用模块预加载
+    modulePreload: false
   },
   // 开发服务器配置
   server: {

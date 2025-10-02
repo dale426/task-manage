@@ -3,12 +3,20 @@ import { RouteObject } from "react-router-dom";
 import { Spin } from "antd";
 import RootLayout from "./ui/RootLayout";
 
-// 懒加载页面组件
-const TasksPage = lazy(() => import("./ui/tasks/TasksPage"));
-const TaskDetailPage = lazy(() => import("./ui/tasks/TaskDetailPage"));
-const ProjectsPage = lazy(() => import("./ui/projects/ProjectsPage"));
-const UsersPage = lazy(() => import("./ui/users/UsersPage"));
-const AppointmentsPage = lazy(() => import("./ui/appointments/AppointmentsPage"));
+// 使用更安全的懒加载方式，添加错误处理
+const createLazyComponent = (importFunc: () => Promise<any>) => {
+  return lazy(() => importFunc().catch(err => {
+    console.error('Dynamic import failed:', err);
+    // 返回一个错误页面组件
+    return { default: () => createElement('div', { style: { padding: '20px', textAlign: 'center' } }, 'Page loading failed. Please refresh.') };
+  }));
+};
+
+const TasksPage = createLazyComponent(() => import("./ui/tasks/TasksPage"));
+const TaskDetailPage = createLazyComponent(() => import("./ui/tasks/TaskDetailPage"));
+const ProjectsPage = createLazyComponent(() => import("./ui/projects/ProjectsPage"));
+const UsersPage = createLazyComponent(() => import("./ui/users/UsersPage"));
+const AppointmentsPage = createLazyComponent(() => import("./ui/appointments/AppointmentsPage"));
 
 // 加载中组件
 const LoadingSpinner = () => (

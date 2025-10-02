@@ -2,11 +2,12 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { ConfigProvider, App as AntApp, theme } from "antd";
 import zhCN from "antd/locale/zh_CN";
-import { RouterProvider, createBrowserRouter } from "react-router-dom";
+import { RouterProvider, createBrowserRouter, createHashRouter } from "react-router-dom";
 import routes from "./routes";
 import "./styles.css";
 
-const router = createBrowserRouter(routes);
+// 使用HashRouter避免部署时的路径问题
+const router = createHashRouter(routes);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
