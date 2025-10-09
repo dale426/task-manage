@@ -25,17 +25,18 @@ body,
 .completed-task-card::before {
   content: '';
   position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 60px;
-  height: 60px;
+  top: var(--complete-img-top, 8px);
+  right: var(--complete-img-right, 8px);
+  width: var(--complete-img-size, 60px);
+  height: var(--complete-img-size, 60px);
   background-image: var(--complete-img-url);
   background-repeat: no-repeat;
   background-size: contain;
   background-position: center;
-  opacity: 0.3;
+  opacity: var(--complete-img-opacity, 0.3);
   pointer-events: none;
   z-index: 1;
+  transition: all 0.3s ease;
 }
 
 /* 已完成子任务卡片的背景图片 */

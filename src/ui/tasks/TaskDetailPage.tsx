@@ -745,7 +745,12 @@ export default function TaskDetailPage() {
                                     }
                                          color={currentColor}
                                        />
-                                       <span style={{ marginLeft: "8px", flex: 1 }}>
+                                       <span style={{ 
+                                         marginLeft: "8px", 
+                                         flex: 1,
+                                         textDecoration: isCompleted ? 'line-through' : 'none',
+                                         opacity: isCompleted ? 0.6 : 1
+                                       }}>
                                     {sp.name}
                                        </span>
                                        {isCompleted && sp.completedAt && (

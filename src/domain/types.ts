@@ -23,9 +23,10 @@ export type Appointment = {
   content: string;
   userIds: ID[]; // reminder users
   startTime: string; // ISO string
+  endTime: string; // ISO string
   completed: boolean;
   completedAt?: string; // ISO string when appointment was completed
-  status: "pending" | "started" | "completed"; // appointment status
+  status: "pending" | "started" | "completed" | "ended"; // appointment status
 };
 
 export { TaskType };

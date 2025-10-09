@@ -79,6 +79,7 @@ export type StoreState = Entities & {
   updateAppointment: (id: ID, updates: Partial<Appointment>) => void;
   deleteAppointment: (id: ID) => void;
   markAppointmentCompleted: (id: ID) => void;
+  updateAppointmentStatus: (id: ID, status: "pending" | "started" | "completed" | "ended") => void;
 };
 
 export const useStore = create<StoreState>((set, get) => ({
@@ -485,6 +486,8 @@ export const useStore = create<StoreState>((set, get) => ({
       ...data,
       completed: false,
       status: "pending",
+      // 如果没有提供endTime，默认使用startTime
+      endTime: data.endTime || data.startTime,
     };
     set((s) => {
       const ns = {
@@ -520,6 +523,15 @@ export const useStore = create<StoreState>((set, get) => ({
         a.id === id
           ? { ...a, completed: true, completedAt: new Date().toISOString(), status: "completed" as const }
           : a
+      );
+      const ns = { ...s, appointments };
+      save(ns);
+      return ns;
+    }),
+  updateAppointmentStatus: (id, status) =>
+    set((s) => {
+      const appointments = s.appointments.map((a) =>
+        a.id === id ? { ...a, status } : a
       );
       const ns = { ...s, appointments };
       save(ns);

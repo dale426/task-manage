@@ -19,6 +19,8 @@ import {
   EditOutlined,
   DeleteOutlined,
   CheckOutlined,
+  DownOutlined,
+  RightOutlined,
 } from "@ant-design/icons";
 import { useStore } from "../../domain/store";
 import type { ID, Appointment } from "../../domain/types";
@@ -39,11 +41,25 @@ export default function AppointmentsPage() {
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Appointment | null>(null);
+  const [expandedCards, setExpandedCards] = useState<Set<ID>>(new Set());
+
+  const toggleCardExpansion = (appointmentId: ID) => {
+    setExpandedCards(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(appointmentId)) {
+        newSet.delete(appointmentId);
+      } else {
+        newSet.add(appointmentId);
+      }
+      return newSet;
+    });
+  };
   const [form] = Form.useForm<{
     title: string;
     content: string;
     userIds: ID[];
     startTime: dayjs.Dayjs;
+    endTime: dayjs.Dayjs;
   }>();
 
   const rows = useMemo(() => {
@@ -60,42 +76,77 @@ export default function AppointmentsPage() {
     });
   }, [appointments]);
 
-  const formatTimeRemaining = (startTime: string) => {
-    const now = dayjs();
-    const start = dayjs(startTime);
-    const diff = start.diff(now);
-
-    if (diff < 0) {
-      return "已过期";
-    }
-
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-    if (days > 0) {
-      return `${days}天${hours}小时${minutes}分钟`;
-    } else if (hours > 0) {
-      return `${hours}小时${minutes}分钟`;
-    } else {
-      return `${minutes}分钟`;
-    }
-  };
-
+  // 计算预约提醒状态
   const getAppointmentStatus = (appointment: Appointment) => {
     const now = dayjs();
     const start = dayjs(appointment.startTime);
-
+    const end = dayjs(appointment.endTime);
+    
     if (appointment.completed) {
-      return { status: "completed", text: "已完成", color: "green" };
+      return "completed";
     }
-
-    if (start.isBefore(now)) {
-      return { status: "started", text: "已开始", color: "blue" };
+    
+    if (now.isAfter(end)) {
+      return "ended";
     }
-
-    return { status: "pending", text: "待开始", color: "orange" };
+    
+    if (now.isAfter(start)) {
+      return "started";
+    }
+    
+    return "pending";
   };
+
+  // 格式化时间距离
+  const formatTimeRemaining = (appointment: Appointment) => {
+    const now = dayjs();
+    const start = dayjs(appointment.startTime);
+    const end = dayjs(appointment.endTime);
+    const status = getAppointmentStatus(appointment);
+    
+    if (status === "completed") {
+      return "已完成";
+    }
+    
+    if (status === "ended") {
+      return "已结束";
+    }
+    
+    if (status === "started") {
+      // 已开始，显示距离结束时间
+      const diff = end.diff(now);
+      if (diff < 0) {
+        return "已结束";
+      }
+      
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      
+      if (days > 0) {
+        return `距离结束: ${days}天${hours}小时${minutes}分钟`;
+      } else if (hours > 0) {
+        return `距离结束: ${hours}小时${minutes}分钟`;
+      } else {
+        return `距离结束: ${minutes}分钟`;
+      }
+    }
+    
+    // pending状态，显示距离开始时间
+    const diff = start.diff(now);
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (days > 0) {
+      return `距离开始: ${days}天${hours}小时${minutes}分钟`;
+    } else if (hours > 0) {
+      return `距离开始: ${hours}小时${minutes}分钟`;
+    } else {
+      return `距离开始: ${minutes}分钟`;
+    }
+  };
+
 
   const handleSubmit = async () => {
     try {
@@ -105,6 +156,7 @@ export default function AppointmentsPage() {
         content: values.content,
         userIds: values.userIds,
         startTime: values.startTime.toISOString(),
+        endTime: values.endTime.toISOString(),
       };
 
       if (editing) {
@@ -130,6 +182,7 @@ export default function AppointmentsPage() {
       content: record.content,
       userIds: record.userIds,
       startTime: dayjs(record.startTime),
+      endTime: dayjs(record.endTime),
     });
     setOpen(true);
   };
@@ -175,12 +228,19 @@ export default function AppointmentsPage() {
       render: (time: string) => dayjs(time).format("YYYY-MM-DD HH:mm"),
     },
     {
-      title: "距离开始时间",
+      title: "结束时间",
+      dataIndex: "endTime",
+      key: "endTime",
+      render: (time: string) => dayjs(time).format("YYYY-MM-DD HH:mm"),
+    },
+    {
+      title: "时间状态",
       dataIndex: "startTime",
       key: "timeRemaining",
-      render: (time: string) => {
-        const remaining = formatTimeRemaining(time);
-        const isOverdue = remaining === "已过期";
+      render: (time: string, record: Appointment) => {
+        const remaining = formatTimeRemaining(record);
+        const status = getAppointmentStatus(record);
+        const isOverdue = status === "ended" && !record.completed;
         return <Tag color={isOverdue ? "red" : "blue"}>{remaining}</Tag>;
       },
     },
@@ -189,7 +249,14 @@ export default function AppointmentsPage() {
       dataIndex: "status",
       key: "status",
       render: (_: any, record: Appointment) => {
-        const statusInfo = getAppointmentStatus(record);
+        const status = getAppointmentStatus(record);
+        const statusMap = {
+          pending: { color: "orange", text: "未开始" },
+          started: { color: "blue", text: "已开始" },
+          completed: { color: "green", text: "已完成" },
+          ended: { color: "red", text: "已结束" }
+        };
+        const statusInfo = statusMap[status];
         return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
       },
     },
@@ -272,19 +339,56 @@ export default function AppointmentsPage() {
       ) : (
         <Space direction="vertical" style={{ width: "100%" }}>
           {rows.map((appointment) => {
-            const statusInfo = getAppointmentStatus(appointment);
+            const status = getAppointmentStatus(appointment);
+            const statusMap = {
+              pending: { color: "orange", text: "未开始" },
+              started: { color: "blue", text: "已开始" },
+              completed: { color: "green", text: "已完成" },
+              ended: { color: "red", text: "已结束" }
+            };
+            const statusInfo = statusMap[status];
             const userNames = appointment.userIds.map(
               (id) => users.find((u) => u.id === id)?.nickname || "未知"
             );
-            const remaining = formatTimeRemaining(appointment.startTime);
-            const isOverdue = remaining === "已过期";
+            const remaining = formatTimeRemaining(appointment);
+            const isOverdue = status === "ended" && !appointment.completed;
 
+            const isCompleted = status === "completed";
+            const isExpanded = expandedCards.has(appointment.id);
+            const shouldCollapse = isCompleted && !isExpanded;
+            
             return (
               <Card
                 key={appointment.id}
                 size="small"
-                title={appointment.title}
-                extra={<Tag color={statusInfo.color}>{statusInfo.text}</Tag>}
+                title={
+                  <div 
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      cursor: isCompleted ? "pointer" : "default"
+                    }}
+                    onClick={isCompleted ? () => toggleCardExpansion(appointment.id) : undefined}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      {isCompleted && (
+                        <span>
+                          {isExpanded ? <DownOutlined /> : <RightOutlined />}
+                        </span>
+                      )}
+                      <span>{appointment.title}</span>
+                    </div>
+                    <Tag color={statusInfo.color}>{statusInfo.text}</Tag>
+                  </div>
+                }
+                style={{
+                  opacity: isCompleted ? 0.6 : 1,
+                  transition: "opacity 0.3s ease"
+                }}
+                bodyStyle={{
+                  display: shouldCollapse ? "none" : "block"
+                }}
               >
                 <div style={{ marginBottom: 8 }}>
                   <Text strong>内容：</Text>
@@ -301,7 +405,13 @@ export default function AppointmentsPage() {
                   </Text>
                 </div>
                 <div style={{ marginBottom: 8 }}>
-                  <Text strong>距离开始：</Text>
+                  <Text strong>结束时间：</Text>
+                  <Text>
+                    {dayjs(appointment.endTime).format("YYYY-MM-DD HH:mm")}
+                  </Text>
+                </div>
+                <div style={{ marginBottom: 8 }}>
+                  <Text strong>时间状态：</Text>
                   <Tag color={isOverdue ? "red" : "blue"}>{remaining}</Tag>
                 </div>
                 {appointment.completed && appointment.completedAt && (
@@ -413,6 +523,13 @@ export default function AppointmentsPage() {
             name="startTime"
             label="开始时间"
             rules={[{ required: true, message: "请选择开始时间" }]}
+          >
+            <MobileDateTimePicker style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item
+            name="endTime"
+            label="结束时间"
+            rules={[{ required: true, message: "请选择结束时间" }]}
           >
             <MobileDateTimePicker style={{ width: "100%" }} />
           </Form.Item>

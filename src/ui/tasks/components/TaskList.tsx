@@ -1,7 +1,7 @@
 import { Button, Card, Space, Table, Tag, Grid } from "antd";
-import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { EditOutlined, DeleteOutlined, DownOutlined, RightOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useStore } from "../../../domain/store";
 import type { ID, Task } from "../../../domain/types";
 import { TaskType, TaskTypeLabels, ProjectRepeatLabels } from "../../../domain/enums";
@@ -18,6 +18,19 @@ interface TaskListProps {
 export default function TaskList({ tasks, onEdit, onDelete, onNavigate }: TaskListProps) {
   const { projects, users } = useStore();
   const screens = Grid.useBreakpoint();
+  const [expandedCards, setExpandedCards] = useState<Set<ID>>(new Set());
+
+  const toggleCardExpansion = (taskId: ID) => {
+    setExpandedCards(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(taskId)) {
+        newSet.delete(taskId);
+      } else {
+        newSet.add(taskId);
+      }
+      return newSet;
+    });
+  };
 
   const columns = [
     {
@@ -184,19 +197,52 @@ export default function TaskList({ tasks, onEdit, onDelete, onNavigate }: TaskLi
             }
           }
 
+          const isCompleted = r.completed;
+          const isExpanded = expandedCards.has(r.id);
+          const shouldCollapse = isCompleted && !isExpanded;
+
           return (
             <Card
               key={r.id}
               size="small"
+              style={{
+                opacity: isCompleted ? 0.6 : 1,
+                transition: "opacity 0.3s ease",
+                cursor: "pointer",
+                position: "relative",
+                ...(r.completed
+                  ? {
+                    '--complete-img-url': `url(${completeImg})`,
+                    '--complete-img-size': shouldCollapse ? '40px' : '60px',
+                    '--complete-img-top': shouldCollapse ? '-2px' : '8px',
+                    '--complete-img-right': shouldCollapse ? '4px' : '8px',
+                    '--complete-img-opacity': shouldCollapse ? '1' : '0.5'
+                  } as React.CSSProperties
+                  : {
+                    '--processing-img-url': `url(${processingImg})`
+                  } as React.CSSProperties)
+              }}
+              bodyStyle={{
+                display: shouldCollapse ? "none" : "block"
+              }}
                 title={
-                  <div style={{
-                    display: "flex",
-                    alignItems: "baseline",
-                    justifyContent: "space-between",
-                    fontSize: "14px",
-                    lineHeight: "20px"
-                  }}>
+                  <div 
+                    style={{
+                      display: "flex",
+                      alignItems: "baseline",
+                      justifyContent: "space-between",
+                      fontSize: "14px",
+                      lineHeight: "20px",
+                      cursor: isCompleted ? "pointer" : "default"
+                    }}
+                    onClick={isCompleted ? () => toggleCardExpansion(r.id) : undefined}
+                  >
                     <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "baseline", gap: "4px" }}>
+                      {isCompleted && (
+                        <span style={{ marginRight: "4px" }}>
+                          {isExpanded ? <DownOutlined /> : <RightOutlined />}
+                        </span>
+                      )}
                       <span>
                         {projectName && (
                           <span style={{ color: "#1890ff" }}>
@@ -244,21 +290,16 @@ export default function TaskList({ tasks, onEdit, onDelete, onNavigate }: TaskLi
                     </div>
                   </div>
                 }
-              onClick={() => onNavigate(`/tasks/${r.id}`)}
-              style={{
-                cursor: "pointer",
-                position: "relative",
-                ...(r.completed
-                  ? {
-                    '--complete-img-url': `url(${completeImg})`
-                  } as React.CSSProperties
-                  : {
-                    '--processing-img-url': `url(${processingImg})`
-                  } as React.CSSProperties)
-              }}
               className={r.completed ? "completed-task-card" : "processing-task-card"}
             >
-              <div style={{ display: "flex", alignItems: "flex-end" }}>
+              <div 
+                style={{ 
+                  display: "flex", 
+                  alignItems: "flex-end",
+                  cursor: "pointer"
+                }}
+                onClick={() => onNavigate(`/tasks/${r.id}`)}
+              >
                 <div style={{ flex: 1, fontSize: "12px", lineHeight: "18px", marginRight: "60px" }}>
                   <div style={{ color: "#333", marginBottom: "4px" }}>
                     <span style={{ color: "#666" }}>任务进度: </span>
