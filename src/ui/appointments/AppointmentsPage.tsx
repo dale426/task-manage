@@ -24,6 +24,7 @@ import {
 } from "@ant-design/icons";
 import { useStore } from "../../domain/store";
 import type { ID, Appointment } from "../../domain/types";
+import { UserLevel, UserLevelOrder, UserLevelLabels } from "../../domain/enums";
 import dayjs from "dayjs";
 import MobileDateTimePicker from "../components/MobileDateTimePicker";
 
@@ -515,7 +516,24 @@ export default function AppointmentsPage() {
             <MobileSelect
               mode="multiple"
               placeholder="选择用户"
-              options={users.map((u) => ({ value: u.id, label: u.nickname }))}
+              options={users
+                .sort((a, b) => {
+                  const levelA = UserLevelOrder[a.level || UserLevel.LEVEL_3];
+                  const levelB = UserLevelOrder[b.level || UserLevel.LEVEL_3];
+                  return levelA - levelB;
+                })
+                .map((u) => {
+                  const level = u.level || UserLevel.LEVEL_3;
+                  const levelColor = level === UserLevel.LEVEL_1 ? "red" : level === UserLevel.LEVEL_2 ? "orange" : "blue";
+                  return { 
+                    value: u.id, 
+                    label: u.nickname,
+                    tag: {
+                      text: UserLevelLabels[level],
+                      color: levelColor
+                    }
+                  };
+                })}
             />
           </Form.Item>
 

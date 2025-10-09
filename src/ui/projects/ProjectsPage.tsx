@@ -14,7 +14,7 @@ import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useMemo, useState } from "react";
 import { useStore } from "../../domain/store";
 import type { Project, ID } from "../../domain/types";
-import { ProjectRepeat, ProjectRepeatLabels } from "../../domain/enums";
+import { ProjectRepeat, ProjectRepeatLabels, UserLevel, UserLevelOrder, UserLevelLabels } from "../../domain/enums";
 
 export default function ProjectsPage() {
   const { projects, users, createProject, updateProject, deleteProject } =
@@ -189,7 +189,24 @@ export default function ProjectsPage() {
             <MobileSelect
               mode="multiple"
               placeholder="选择用户"
-              options={users.map((u) => ({ value: u.id, label: u.nickname }))}
+              options={users
+                .sort((a, b) => {
+                  const levelA = UserLevelOrder[a.level || UserLevel.LEVEL_3];
+                  const levelB = UserLevelOrder[b.level || UserLevel.LEVEL_3];
+                  return levelA - levelB;
+                })
+                .map((u) => {
+                  const level = u.level || UserLevel.LEVEL_3;
+                  const levelColor = level === UserLevel.LEVEL_1 ? "red" : level === UserLevel.LEVEL_2 ? "orange" : "blue";
+                  return { 
+                    value: u.id, 
+                    label: u.nickname,
+                    tag: {
+                      text: UserLevelLabels[level],
+                      color: levelColor
+                    }
+                  };
+                })}
             />
           </Form.Item>
           <Form.Item name="repeat" label="重复频率" initialValue={ProjectRepeat.NONE}>

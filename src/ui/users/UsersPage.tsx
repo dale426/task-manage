@@ -1,8 +1,9 @@
-import { Button, Form, Input, Modal, Space, Table, Grid, Card } from "antd";
+import { Button, Form, Input, Modal, Space, Table, Grid, Card, Select, Tag } from "antd";
 import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useMemo, useState } from "react";
 import { useStore } from "../../domain/store";
 import type { User } from "../../domain/types";
+import { UserLevel, UserLevelLabels } from "../../domain/enums";
 
 export default function UsersPage() {
   const { users, createUser, updateUser, deleteUser } = useStore();
@@ -12,6 +13,7 @@ export default function UsersPage() {
     nickname: string;
     phone?: string;
     note?: string;
+    level: UserLevel;
   }>();
 
   const rows = useMemo(() => users, [users]);
@@ -40,6 +42,15 @@ export default function UsersPage() {
           columns={[
             { title: "昵称", dataIndex: "nickname" },
             { title: "手机号", dataIndex: "phone" },
+            { 
+              title: "级别", 
+              dataIndex: "level",
+              render: (level: UserLevel) => (
+                <Tag color={level === UserLevel.LEVEL_1 ? "red" : level === UserLevel.LEVEL_2 ? "orange" : "blue"}>
+                  {UserLevelLabels[level || UserLevel.LEVEL_3]}
+                </Tag>
+              )
+            },
             { title: "备注", dataIndex: "note" },
             {
               title: "操作",
@@ -91,6 +102,7 @@ export default function UsersPage() {
                         nickname: user.nickname,
                         phone: user.phone,
                         note: user.note,
+                        level: user.level || UserLevel.LEVEL_3,
                       });
                       setOpen(true);
                     }}
@@ -107,6 +119,12 @@ export default function UsersPage() {
               <div style={{ marginBottom: 8 }}>
                 <strong>手机号：</strong>
                 <span>{user.phone || "-"}</span>
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <strong>级别：</strong>
+                <Tag color={user.level === UserLevel.LEVEL_1 ? "red" : user.level === UserLevel.LEVEL_2 ? "orange" : "blue"}>
+                  {UserLevelLabels[user.level || UserLevel.LEVEL_3]}
+                </Tag>
               </div>
               <div>
                 <strong>备注：</strong>
@@ -138,6 +156,20 @@ export default function UsersPage() {
           </Form.Item>
           <Form.Item name="phone" label="手机号">
             <Input placeholder="例如：13800000000" />
+          </Form.Item>
+          <Form.Item 
+            name="level" 
+            label="级别"
+            initialValue={UserLevel.LEVEL_3}
+            rules={[{ required: true, message: "请选择用户级别" }]}
+          >
+            <Select
+              options={[
+                { value: UserLevel.LEVEL_1, label: UserLevelLabels[UserLevel.LEVEL_1] },
+                { value: UserLevel.LEVEL_2, label: UserLevelLabels[UserLevel.LEVEL_2] },
+                { value: UserLevel.LEVEL_3, label: UserLevelLabels[UserLevel.LEVEL_3] }
+              ]}
+            />
           </Form.Item>
           <Form.Item name="note" label="备注">
             <Input.TextArea rows={3} />

@@ -191,7 +191,7 @@ export default function TaskDetailPage() {
             title={
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span>完成步骤</span>
-                {task.userIds.length > 1 && activeUserId && (
+                {task.userIds.length > 0 && activeUserId && (
                   <Button
                     size="small"
                     type="text"
@@ -213,7 +213,7 @@ export default function TaskDetailPage() {
           >
             {task.steps.length === 0 ? (
               <div>
-                {task.userIds.length > 1 && (
+                {task.userIds.length > 0 && (
                   <Tabs
                     tabPosition="top"
                     activeKey={activeUserId}
@@ -248,14 +248,52 @@ export default function TaskDetailPage() {
                   />
                 )}
                 {task.userIds.length === 1 ? (
-                  <Button
-                    type="primary"
-                    onClick={() =>
-                      updateTask(task.id, { completed: !task.completed })
-                    }
-                  >
-                    {task.completed ? "取消完成" : "标记完成"}
-                  </Button>
+                  <div>
+                    <Button
+                      type="primary"
+                      onClick={() =>
+                        updateTask(task.id, { completed: !task.completed })
+                      }
+                    >
+                      {task.completed ? "取消完成" : "标记完成"}
+                    </Button>
+                    
+                    {/* 单用户任务的用户备注区域 */}
+                    {task.userIds.length > 0 && activeUserId && (
+                      <div className="user-note-area" style={{ marginTop: 12 }}>
+                        {activeUserNoteId === 'steps' ? (
+                          <Input.TextArea
+                            size="small"
+                            value={task.userNotes?.[activeUserId] || ""}
+                            onChange={(e) => {
+                              setTaskUserNote(task.id, activeUserId, e.target.value);
+                            }}
+                            onBlur={() => {
+                              setActiveUserNoteId(null);
+                            }}
+                            placeholder="添加用户备注..."
+                            rows={2}
+                            autoFocus={true}
+                          />
+                        ) : task.userNotes?.[activeUserId] ? (
+                          <div 
+                            style={{ 
+                              padding: "4px 8px", 
+                              backgroundColor: "#f5f5f5", 
+                              borderRadius: "4px",
+                              fontSize: "12px",
+                              color: "#666",
+                              cursor: "pointer",
+                              minHeight: "20px"
+                            }}
+                            onClick={() => setActiveUserNoteId('steps')}
+                          >
+                            {task.userNotes[activeUserId]}
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
                 ) : (
                   <div style={{ padding: "16px", border: "1px solid #f0f0f0", borderRadius: "6px" }}>
                     <div style={{ marginBottom: "12px", fontWeight: "500" }}>
@@ -306,7 +344,7 @@ export default function TaskDetailPage() {
               </div>
             ) : (
               <div>
-                {task.userIds.length > 1 && (
+                {task.userIds.length > 0 && (
                   <Tabs
                     tabPosition="top"
                     activeKey={activeUserId}
@@ -350,7 +388,7 @@ export default function TaskDetailPage() {
                 )}
                 
                 {/* 用户备注区域 */}
-                {task.userIds.length > 1 && activeUserId && (
+                {task.userIds.length > 0 && activeUserId && (
                   <div className="user-note-area" style={{ marginBottom: 12 }}>
                     {activeUserNoteId === 'steps' ? (
                       <Input.TextArea
@@ -388,12 +426,12 @@ export default function TaskDetailPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {task.steps.map((step, index) => {
                     // 在多用户场景下，显示当前用户是否完成了这个步骤
-                    const isCompletedByCurrentUser = task.userIds.length > 1
+                    const isCompletedByCurrentUser = task.userIds.length > 0
                       ? (step.completedByUsers || []).includes(activeUserId || '')
                       : Boolean(step.doneByUserId);
 
                     // 显示是否有任何用户完成了这个步骤
-                    const isCompletedByAnyone = task.userIds.length > 1 
+                    const isCompletedByAnyone = task.userIds.length > 0 
                       ? (step.completedByUsers || []).length > 0
                       : Boolean(step.doneByUserId);
                     const completedUsersCount = (step.completedByUsers || []).length;
@@ -414,7 +452,7 @@ export default function TaskDetailPage() {
                           transition: "all 0.2s ease"
                         }}
                         onClick={() => {
-                          if (task.userIds.length > 1 && activeUserId) {
+                          if (task.userIds.length > 0 && activeUserId) {
                             setStepDone(task.id, null, step.id, !isCompletedByCurrentUser, activeUserId);
                           } else {
                             setStepDone(task.id, null, step.id, !isCompletedByCurrentUser);
@@ -428,7 +466,7 @@ export default function TaskDetailPage() {
                           <CustomCheckbox
                             checked={isCompletedByCurrentUser}
                             onChange={(checked) => {
-                              if (task.userIds.length > 1 && activeUserId) {
+                              if (task.userIds.length > 0 && activeUserId) {
                                 // For multi-user tasks, pass the current user ID
                                 setStepDone(task.id, null, step.id, checked, activeUserId);
                               } else {
@@ -470,7 +508,7 @@ export default function TaskDetailPage() {
             title={
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span>子任务（{doneSubtasks}/{totalSubtasks} 已完成）</span>
-                {task.userIds.length > 1 && activeUserId && (
+                {task.userIds.length > 0 && activeUserId && (
                   <Button
                     size="small"
                     type="text"
@@ -542,7 +580,7 @@ export default function TaskDetailPage() {
               </Col>
               <Col xs={24} md={24}>
                 {/* 用户备注区域 */}
-                {task.userIds.length > 1 && activeUserId && (
+                {task.userIds.length > 0 && activeUserId && (
                   <div className="user-note-area" style={{ marginBottom: 12 }}>
                     {activeUserNoteId === 'subtasks' ? (
                       <Input.TextArea

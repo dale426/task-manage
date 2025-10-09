@@ -1,4 +1,4 @@
-import { TaskType, ProjectRepeat } from './enums';
+import { TaskType, ProjectRepeat, UserLevel } from './enums';
 
 export type ID = string;
 
@@ -7,6 +7,7 @@ export type User = {
   nickname: string;
   phone?: string;
   note?: string;
+  level?: UserLevel; // 用户级别，默认为三级
 };
 
 export type Project = {

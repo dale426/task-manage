@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Select, Button, Space } from 'antd';
+import { Select, Button, Space, Tag } from 'antd';
 import { DownOutlined } from '@ant-design/icons';
 
 interface MobileSelectProps {
   value?: any;
   onChange?: (value: any) => void;
-  options?: Array<{ value: any; label: string }>;
+  options?: Array<{ value: any; label: string; tag?: { text: string; color: string } }>;
   placeholder?: string;
   mode?: 'multiple' | 'tags';
   allowClear?: boolean;
@@ -241,7 +241,14 @@ const MobileSelect: React.FC<MobileSelectProps> = ({
                       lineHeight: '1.5'
                     }}
                   >
-                    <span>{option.label}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                      <span>{option.label}</span>
+                      {option.tag && (
+                        <Tag color={option.tag.color}>
+                          {option.tag.text}
+                        </Tag>
+                      )}
+                    </div>
                     {isSelected && (
                       <span style={{ color: '#1890ff', fontSize: '16px' }}>✓</span>
                     )}

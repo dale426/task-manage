@@ -206,7 +206,7 @@ export default function TaskList({ tasks, onEdit, onDelete, onNavigate }: TaskLi
               key={r.id}
               size="small"
               style={{
-                opacity: isCompleted ? 0.6 : 1,
+                opacity: isCompleted ? 0.88 : 1,
                 transition: "opacity 0.3s ease",
                 cursor: "pointer",
                 position: "relative",

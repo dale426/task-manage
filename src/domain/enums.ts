@@ -25,3 +25,24 @@ export const ProjectRepeatLabels = {
   [ProjectRepeat.WEEKLY]: "每周", 
   [ProjectRepeat.MONTHLY]: "每月"
 } as const;
+
+// 用户级别枚举
+export enum UserLevel {
+  LEVEL_1 = "level_1",
+  LEVEL_2 = "level_2", 
+  LEVEL_3 = "level_3"
+}
+
+// 用户级别显示名称映射
+export const UserLevelLabels = {
+  [UserLevel.LEVEL_1]: "一级",
+  [UserLevel.LEVEL_2]: "二级",
+  [UserLevel.LEVEL_3]: "三级"
+} as const;
+
+// 用户级别排序权重（数字越小排序越靠前）
+export const UserLevelOrder = {
+  [UserLevel.LEVEL_1]: 1,
+  [UserLevel.LEVEL_2]: 2,
+  [UserLevel.LEVEL_3]: 3
+} as const;

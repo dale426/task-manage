@@ -3,9 +3,10 @@ import MobileSelect from "../../components/MobileSelect";
 import { useMemo } from "react";
 import { useStore } from "../../../domain/store";
 import type { ID, Task } from "../../../domain/types";
-import { TaskType, TaskTypeLabels } from "../../../domain/enums";
+import { TaskType, TaskTypeLabels, UserLevel, UserLevelOrder, UserLevelLabels } from "../../../domain/enums";
 import dayjs from "dayjs";
 import MobileDateTimePicker from "../../components/MobileDateTimePicker";
+import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 
 type TaskFormValues = {
   name: string;
@@ -35,7 +36,13 @@ export default function TaskForm({ form, editing, onCancel, onSubmit }: TaskForm
         label="任务名称"
         rules={[{ required: true, message: "请输入任务名称" }]}
       >
-        <Input placeholder="例如：发布v1.0版本" />
+        <Input 
+          placeholder="例如：发布v1.0版本" 
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck="false"
+        />
       </Form.Item>
       <Form.Item name="projectId" label="关联项目">
         <MobileSelect
@@ -60,7 +67,24 @@ export default function TaskForm({ form, editing, onCancel, onSubmit }: TaskForm
         <MobileSelect
           mode="multiple"
           placeholder="选择用户"
-          options={users.map((u) => ({ value: u.id, label: u.nickname }))}
+          options={users
+            .sort((a, b) => {
+              const levelA = UserLevelOrder[a.level || UserLevel.LEVEL_3];
+              const levelB = UserLevelOrder[b.level || UserLevel.LEVEL_3];
+              return levelA - levelB;
+            })
+            .map((u) => {
+              const level = u.level || UserLevel.LEVEL_3;
+              const levelColor = level === UserLevel.LEVEL_1 ? "red" : level === UserLevel.LEVEL_2 ? "orange" : "blue";
+              return { 
+                value: u.id, 
+                label: u.nickname,
+                tag: {
+                  text: UserLevelLabels[level],
+                  color: levelColor
+                }
+              };
+            })}
         />
       </Form.Item>
       <Form.Item name="type" label="任务类型" rules={[{ required: true }]}>
@@ -103,20 +127,21 @@ export default function TaskForm({ form, editing, onCancel, onSubmit }: TaskForm
                             { required: true, message: "请输入子任务名称" },
                           ]}
                         >
-                          <Input placeholder="例如：开发任务A" />
+                          <Input 
+                            placeholder="例如：开发任务A" 
+                            autoComplete="off"
+                            autoCorrect="off"
+                            autoCapitalize="off"
+                            spellCheck="false"
+                          />
                         </Form.Item>
-                        <Button
-                          onClick={() => add({ name: "" }, field.name + 1)}
-                        >
-                          + 添加
-                        </Button>
-                        <Button danger onClick={() => remove(field.name)}>
-                          删除
-                        </Button>
+                        <PlusOutlined style={{padding: "0 6px", color: "green"}} onClick={() => add({ name: "" }, field.name + 1)}/>
+                        <DeleteOutlined style={{padding: "0 6px", color: "red"}} onClick={() => remove(field.name)}/>
                       </div>
                     ))}
                     {fields.length === 0 && (
                       <Button
+                        style={{width: "100%"}}
                         type="dashed"
                         onClick={() => add({ name: "" })}
                       >
@@ -134,30 +159,41 @@ export default function TaskForm({ form, editing, onCancel, onSubmit }: TaskForm
         <div style={{ fontWeight: 500, marginBottom: 8 }}>完成步骤</div>
         <Form.List name="steps">
           {(fields, { add, remove }) => (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            <div>
               {fields.map((field, idx) => (
                 <div
                   key={field.key}
-                  style={{ display: "flex", gap: 6, alignItems: "center" }}
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    marginBottom: 8,
+                    alignItems: "center",
+                  }}
                 >
                   <Tag>{idx + 1}</Tag>
                   <Form.Item
-                    style={{ marginBottom: 0, width: 220 }}
+                    style={{ flex: 1, marginBottom: 0 }}
                     name={[field.name, "name"]}
                     rules={[{ required: true, message: "请输入步骤名称" }]}
                   >
-                    <Input placeholder="例如：代码合并" />
+                    <Input 
+                      placeholder="例如：代码合并" 
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck="false"
+                    />
                   </Form.Item>
-                  <Button onClick={() => add({ name: "" }, field.name + 1)}>
-                    + 添加
-                  </Button>
-                  <Button danger onClick={() => remove(field.name)}>
-                    删
-                  </Button>
+                  <PlusOutlined style={{padding: "0 6px", color: "green", cursor: "pointer"}} onClick={() => add({ name: "" }, field.name + 1)}/>
+                  <DeleteOutlined style={{padding: "0 6px", color: "red", cursor: "pointer"}} onClick={() => remove(field.name)}/>
                 </div>
               ))}
               {fields.length === 0 && (
-                <Button type="dashed" onClick={() => add({ name: "" })}>
+                <Button
+                  style={{width: "100%"}}
+                  type="dashed"
+                  onClick={() => add({ name: "" })}
+                >
                   + 新增步骤
                 </Button>
               )}
@@ -169,7 +205,13 @@ export default function TaskForm({ form, editing, onCancel, onSubmit }: TaskForm
         <MobileDateTimePicker style={{ width: "100%" }} />
       </Form.Item>
       <Form.Item name="note" label="备注">
-        <Input.TextArea rows={3} />
+        <Input.TextArea 
+          rows={3} 
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck="false"
+        />
       </Form.Item>
     </Form>
   );
