@@ -161,10 +161,10 @@ export default function AppointmentsPage() {
       };
 
       if (editing) {
-        updateAppointment(editing.id, data);
+        await updateAppointment(editing.id, data);
         message.success("预约提醒已更新");
       } else {
-        createAppointment(data);
+        await createAppointment(data);
         message.success("预约提醒已创建");
       }
 
@@ -192,9 +192,14 @@ export default function AppointmentsPage() {
     Modal.confirm({
       title: "确认删除",
       content: "确定要删除这个预约提醒吗？",
-      onOk: () => {
-        deleteAppointment(id);
-        message.success("预约提醒已删除");
+      onOk: async () => {
+        try {
+          await deleteAppointment(id);
+          message.success("预约提醒已删除");
+        } catch (error) {
+          console.error("删除失败:", error);
+          message.error("删除失败，请重试");
+        }
       },
     });
   };

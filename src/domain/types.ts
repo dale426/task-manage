@@ -44,6 +44,7 @@ export type TaskStep = {
 
 export type Subtask = {
   id: ID;
+  taskId: ID; // 关联的任务ID
   name: string;
   ownerUserId: ID; // the user this subtask belongs to
   steps: TaskStep[];
@@ -62,7 +63,6 @@ export type Task = {
   type: TaskType;
   steps: TaskStep[]; // for single task, directly usable; for composite, used as template for subtasks
   subtaskTemplates?: string[]; // for composite: template names used to generate per-user subtasks
-  subtasks?: Subtask[]; // present when type is composite
   dueAt?: string; // ISO string
   completed: boolean;
   completedAt?: string; // ISO string when task was completed

@@ -16,7 +16,7 @@ interface TaskListProps {
 }
 
 export default function TaskList({ tasks, onEdit, onDelete, onNavigate }: TaskListProps) {
-  const { projects, users } = useStore();
+  const { projects, users, subtasks } = useStore();
   const screens = Grid.useBreakpoint();
   const [expandedCards, setExpandedCards] = useState<Set<ID>>(new Set());
 
@@ -77,9 +77,12 @@ export default function TaskList({ tasks, onEdit, onDelete, onNavigate }: TaskLi
     {
       title: "子任务",
       render: (_: any, r: Task) => {
-        if (r.type === TaskType.COMPOSITE && r.subtasks && r.subtasks.length > 0) {
-          const completedCount = r.subtasks.filter(s => s.completed).length;
-          return `${completedCount}/${r.subtasks.length}`;
+        if (r.type === TaskType.COMPOSITE) {
+          const taskSubtasks = subtasks.filter(s => s.taskId === r.id);
+          if (taskSubtasks.length > 0) {
+            const completedCount = taskSubtasks.filter(s => s.completed).length;
+            return `${completedCount}/${taskSubtasks.length}`;
+          }
         }
         return "-";
       },
@@ -141,9 +144,10 @@ export default function TaskList({ tasks, onEdit, onDelete, onNavigate }: TaskLi
           let completedCount = 0;
           let totalCount = 0;
 
-          if (r.type === TaskType.COMPOSITE && r.subtasks) {
+          if (r.type === TaskType.COMPOSITE) {
             // 复合任务：统计所有用户的所有子任务
-            r.subtasks.forEach(subtask => {
+            const taskSubtasks = subtasks.filter(s => s.taskId === r.id);
+            taskSubtasks.forEach(subtask => {
               if (subtask.steps.length > 0) {
                 // 有步骤的子任务，统计步骤完成情况
                 subtask.steps.forEach(step => {

@@ -42,8 +42,9 @@ export default function TasksPage() {
     });
   }, [tasks]);
 
-  const handleSubmit = () => {
-    form.validateFields().then((values) => {
+  const handleSubmit = async () => {
+    try {
+      const values = await form.validateFields();
       const payload = {
         name: values.name,
         projectId: values.projectId,
@@ -62,10 +63,19 @@ export default function TasksPage() {
                 .filter(Boolean)
             : undefined,
       } as Omit<Task, "id" | "completed" | "subtasks">;
-      if (editing) updateTask(editing.id, payload);
-      else createTask(payload);
+      
+      if (editing) {
+        await updateTask(editing.id, payload);
+        message.success('任务更新成功');
+      } else {
+        await createTask(payload);
+        message.success('任务创建成功');
+      }
       setOpen(false);
-    });
+    } catch (error) {
+      console.error('任务操作失败:', error);
+      message.error('操作失败，请重试');
+    }
   };
 
   const handleEdit = (task: Task) => {

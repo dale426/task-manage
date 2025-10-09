@@ -1,4 +1,4 @@
-import { Button, Form, Input, Modal, Space, Table, Grid, Card, Select, Tag } from "antd";
+import { Button, Form, Input, Modal, Space, Table, Grid, Card, Select, Tag, message } from "antd";
 import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useMemo, useState } from "react";
 import { useStore } from "../../domain/store";
@@ -138,12 +138,21 @@ export default function UsersPage() {
         open={open}
         title={editing ? "编辑用户" : "新增用户"}
         onCancel={() => setOpen(false)}
-        onOk={() => {
-          form.validateFields().then((values) => {
-            if (editing) updateUser(editing.id, values);
-            else createUser(values);
+        onOk={async () => {
+          try {
+            const values = await form.validateFields();
+            if (editing) {
+              await updateUser(editing.id, values);
+              message.success('用户更新成功');
+            } else {
+              await createUser(values);
+              message.success('用户创建成功');
+            }
             setOpen(false);
-          });
+          } catch (error) {
+            console.error('用户操作失败:', error);
+            message.error('操作失败，请重试');
+          }
         }}
       >
         <Form form={form} layout="vertical">

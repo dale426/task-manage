@@ -8,6 +8,7 @@ import {
   Grid,
   Card,
   Tag,
+  message,
 } from "antd";
 import MobileSelect from "../components/MobileSelect";
 import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
@@ -169,12 +170,21 @@ export default function ProjectsPage() {
         open={open}
         title={editing ? "编辑项目" : "新增项目"}
         onCancel={() => setOpen(false)}
-        onOk={() => {
-          form.validateFields().then((values) => {
-            if (editing) updateProject(editing.id, values);
-            else createProject(values);
+        onOk={async () => {
+          try {
+            const values = await form.validateFields();
+            if (editing) {
+              await updateProject(editing.id, values);
+              message.success('项目更新成功');
+            } else {
+              await createProject(values);
+              message.success('项目创建成功');
+            }
             setOpen(false);
-          });
+          } catch (error) {
+            console.error('项目操作失败:', error);
+            message.error('操作失败，请重试');
+          }
         }}
       >
         <Form form={form} layout="vertical">

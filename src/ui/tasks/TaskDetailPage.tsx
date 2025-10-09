@@ -8,6 +8,7 @@ import {
   Tag,
   Row,
   Col,
+  message,
   Input,
 } from "antd";
 import dayjs from "dayjs";
@@ -25,10 +26,16 @@ import processingImg from "../../assets/processing.png";
 export default function TaskDetailPage() {
   const { taskId } = useParams();
   const navigate = useNavigate();
-  const { tasks, users, projects, setStepDone, updateTask, setTaskCompletedByUser, setTaskUserNote, setStepUserNote, setSubtaskUserNote } = useStore();
+  const { tasks, subtasks, users, projects, setStepDone, setStepUndone, updateTask, setTaskCompletedByUser, setTaskUserNote, setStepUserNote, setSubtaskUserNote, updateSubtask, addSubtask, setSubtaskStepDone, setSubtaskStepUndone } = useStore();
+
   const task = useMemo(
     () => tasks.find((t) => t.id === taskId),
     [tasks, taskId]
+  );
+
+  const taskSubtasks = useMemo(
+    () => subtasks.filter((s) => s.taskId === taskId),
+    [subtasks, taskId]
   );
   const [activeUserId, setActiveUserId] = useState<ID | undefined>(
     task?.userIds?.[0]
@@ -59,8 +66,8 @@ export default function TaskDetailPage() {
     ? projects.find((p) => p.id === task.projectId)?.name ?? "-"
     : "-";
 
-  const totalSubtasks = (task.subtasks ?? []).length;
-  const doneSubtasks = (task.subtasks ?? []).filter((s) => s.completed).length;
+  const totalSubtasks = taskSubtasks.length;
+  const doneSubtasks = taskSubtasks.filter((s) => s.completed).length;
   const [editingSubtaskId, setEditingSubtaskId] = useState<ID | null>(null);
   const [editingName, setEditingName] = useState<string>("");
 
@@ -109,7 +116,15 @@ export default function TaskDetailPage() {
                 <Button
                   type="primary"
                   size="small"
-                  onClick={() => updateTask(task.id, { completed: true })}
+                  onClick={async () => {
+                    try {
+                      await updateTask(task.id, { completed: true });
+                      message.success('任务已强制完成');
+                    } catch (error) {
+                      console.error('操作失败:', error);
+                      message.error('操作失败，请重试');
+                    }
+                  }}
                   style={{ fontSize: "12px" }}
                 >
                   强制完成
@@ -118,7 +133,15 @@ export default function TaskDetailPage() {
               {task.completed && (
                 <Button
                   size="small"
-                  onClick={() => updateTask(task.id, { completed: false })}
+                  onClick={async () => {
+                    try {
+                      await updateTask(task.id, { completed: false });
+                      message.success('任务完成状态已取消');
+                    } catch (error) {
+                      console.error('操作失败:', error);
+                      message.error('操作失败，请重试');
+                    }
+                  }}
                   style={{ fontSize: "12px" }}
                 >
                   取消完成
@@ -305,7 +328,9 @@ export default function TaskDetailPage() {
                           <Checkbox
                             checked={(task.completedByUsers || []).includes(activeUserId)}
                             onChange={(e) => {
-                              setTaskCompletedByUser(task.id, activeUserId, e.target.checked);
+                              if (e.target.checked) {
+                                setTaskCompletedByUser(task.id, activeUserId);
+                              }
                             }}
                           >
                             我已完成此任务
@@ -426,9 +451,11 @@ export default function TaskDetailPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {task.steps.map((step, index) => {
                     // 在多用户场景下，显示当前用户是否完成了这个步骤
-                    const isCompletedByCurrentUser = task.userIds.length > 0
+                    const isCompletedByCurrentUser = task.userIds.length > 1
                       ? (step.completedByUsers || []).includes(activeUserId || '')
-                      : Boolean(step.doneByUserId);
+                      : (step.completedByUsers || []).includes(task.userIds[0]);
+
+  
 
                     // 显示是否有任何用户完成了这个步骤
                     const isCompletedByAnyone = task.userIds.length > 0 
@@ -451,32 +478,72 @@ export default function TaskDetailPage() {
                           cursor: "pointer",
                           transition: "all 0.2s ease"
                         }}
-                        onClick={() => {
-                          if (task.userIds.length > 0 && activeUserId) {
-                            setStepDone(task.id, null, step.id, !isCompletedByCurrentUser, activeUserId);
-                          } else {
-                            setStepDone(task.id, null, step.id, !isCompletedByCurrentUser);
+                        onClick={async () => {
+                          try {
+                            if (task.userIds.length > 1 && activeUserId) {
+                              // 多用户任务（包括多用户单例任务）
+                              if (isCompletedByCurrentUser) {
+                                await setStepUndone(task.id, step.id, activeUserId);
+                              } else {
+                                await setStepDone(task.id, step.id, activeUserId);
+                              }
+                            } else if (task.userIds.length === 1) {
+                              // 单用户任务，使用completedByUsers数组
+                              if (isCompletedByCurrentUser) {
+                                await setStepUndone(task.id, step.id, task.userIds[0]);
+                              } else {
+                                await setStepDone(task.id, step.id, task.userIds[0]);
+                              }
+                            }
+                          } catch (error) {
+                            console.error('操作失败:', error);
+                            message.error('操作失败，请重试');
                           }
                         }}
                       >
                         <div style={{ minWidth: "20px", textAlign: "center" }}>
                           {index + 1}
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1 }}>
-                          <CustomCheckbox
-                            checked={isCompletedByCurrentUser}
-                            onChange={(checked) => {
-                              if (task.userIds.length > 0 && activeUserId) {
-                                // For multi-user tasks, pass the current user ID
-                                setStepDone(task.id, null, step.id, checked, activeUserId);
-                              } else {
-                                setStepDone(task.id, null, step.id, checked);
-                              }
-                            }}
-                            color={currentColor}
-                          />
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: "8px", flex: 1, minHeight: "22px" }}>
+                          <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", height: "22px" }}>
+                            <CustomCheckbox
+                              checked={isCompletedByCurrentUser}
+                              onChange={async (checked) => {
+                                try {
+                     
+                                  
+                                  if (task.userIds.length > 1 && activeUserId) {
+                                    // 多用户任务（包括多用户单例任务）
+                                    if (checked) {
+                                      console.log('标记步骤完成');
+                                      await setStepDone(task.id, step.id, activeUserId);
+                                    } else {
+                                      console.log('取消步骤完成');
+                                      await setStepUndone(task.id, step.id, activeUserId);
+                                    }
+                                  } else if (task.userIds.length === 1) {
+                                    // 单用户任务，使用completedByUsers数组
+                                    if (checked) {
+                                      console.log('单用户任务标记步骤完成');
+                                      await setStepDone(task.id, step.id, task.userIds[0]);
+                                    } else {
+                                      console.log('单用户任务取消步骤完成');
+                                      await setStepUndone(task.id, step.id, task.userIds[0]);
+                                    }
+                                  }
+                                } catch (error) {
+                                  console.error('操作失败:', error);
+                                  message.error('操作失败，请重试');
+                                }
+                              }}
+                              color={currentColor}
+                            />
+                          </div>
                           <span style={{ 
                             flex: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            height: "22px",
                             textDecoration: isCompletedByCurrentUser ? 'line-through' : 'none',
                             opacity: isCompletedByCurrentUser ? 0.6 : 1
                           }}>{step.name}</span>
@@ -536,7 +603,7 @@ export default function TaskDetailPage() {
                   items={task.userIds.map((uid) => {
                     const uname =
                       users.find((u) => u.id === uid)?.nickname ?? "未知";
-                    const userSubs = (task.subtasks ?? []).filter(
+                    const userSubs = taskSubtasks.filter(
                       (s) => s.ownerUserId === uid
                     );
                     const userDone =
@@ -616,7 +683,7 @@ export default function TaskDetailPage() {
                 )}
                 
                 <Space direction="vertical" style={{ width: "100%" }}>
-                  {(task.subtasks ?? [])
+                  {taskSubtasks
                     .filter(
                       (st) => !activeUserId || st.ownerUserId === activeUserId
                     )
@@ -657,21 +724,27 @@ export default function TaskDetailPage() {
                               value={editingName}
                               autoFocus
                               onChange={(e) => setEditingName(e.target.value)}
-                              onPressEnter={() => {
-                                useStore
-                                  .getState()
-                                  .updateSubtask(task.id, st.id, {
-                                    name: editingName.trim() || st.name,
+                              onPressEnter={async () => {
+                                try {
+                                  await updateSubtask(task.id, st.id, { 
+                                    name: editingName.trim() || st.name 
                                   });
                                 setEditingSubtaskId(null);
+                                } catch (error) {
+                                  console.error('更新失败:', error);
+                                  message.error('更新失败，请重试');
+                                }
                               }}
-                              onBlur={() => {
-                                useStore
-                                  .getState()
-                                  .updateSubtask(task.id, st.id, {
-                                    name: editingName.trim() || st.name,
+                              onBlur={async () => {
+                                try {
+                                  await updateSubtask(task.id, st.id, { 
+                                    name: editingName.trim() || st.name 
                                   });
                                 setEditingSubtaskId(null);
+                                } catch (error) {
+                                  console.error('更新失败:', error);
+                                  message.error('更新失败，请重试');
+                                }
                               }}
                             />
                           ) : (
@@ -750,7 +823,7 @@ export default function TaskDetailPage() {
                             >
                                {st.steps.map((sp, stepIndex) => {
                                    const currentColor = colors[idx % colors.length];
-                                   const isCompleted = sp.doneByUserId === st.ownerUserId;
+                                   const isCompleted = activeUserId ? (sp.completedByUsers || []).includes(activeUserId) : false;
                                    
                                    return (
                                 <div
@@ -766,21 +839,38 @@ export default function TaskDetailPage() {
                                          cursor: "pointer",
                                          transition: "all 0.2s ease"
                                        }}
-                                       onClick={() => setStepDone(task.id, st.id, sp.id, !isCompleted)}
+                                       onClick={async () => {
+                                         try {
+                                           if (activeUserId) {
+                                             if (isCompleted) {
+                                               await setSubtaskStepUndone(task.id, st.id, sp.id, activeUserId);
+                                             } else {
+                                               await setSubtaskStepDone(task.id, st.id, sp.id, activeUserId);
+                                             }
+                                           }
+                                         } catch (error) {
+                                           console.error('操作失败:', error);
+                                           message.error('操作失败，请重试');
+                                         }
+                                       }}
                                      >
                                        <div style={{ minWidth: "16px", textAlign: "center", fontSize: "12px" }}>
                                          {stepIndex + 1}
                                        </div>
                                        <CustomCheckbox
                                          checked={isCompleted}
-                                         onChange={(checked) =>
-                                      setStepDone(
-                                        task.id,
-                                        st.id,
-                                        sp.id,
-                                             checked
-                                      )
-                                    }
+                                         onChange={async (checked) => {
+                                           try {
+                                             if (checked && activeUserId) {
+                                               await setSubtaskStepDone(task.id, st.id, sp.id, activeUserId);
+                                             } else if (!checked && activeUserId) {
+                                               await setSubtaskStepUndone(task.id, st.id, sp.id, activeUserId);
+                                             }
+                                           } catch (error) {
+                                             console.error('操作失败:', error);
+                                             message.error('操作失败，请重试');
+                                           }
+                                         }}
                                          color={currentColor}
                                        />
                                        <span style={{ 
@@ -815,20 +905,28 @@ export default function TaskDetailPage() {
                               cursor: "pointer",
                               transition: "all 0.2s ease"
                             }}
-                            onClick={() => {
-                              useStore.getState().updateSubtask(task.id, st.id, {
-                                completed: !st.completed,
-                                completedAt: !st.completed ? new Date().toISOString() : undefined
-                              });
+                            onClick={async () => {
+                              try {
+                                await updateSubtask(task.id, st.id, {
+                                  completed: !st.completed,
+                                });
+                              } catch (error) {
+                                console.error('操作失败:', error);
+                                message.error('操作失败，请重试');
+                              }
                             }}
                           >
                             <CustomCheckbox
                               checked={st.completed}
-                              onChange={(checked) => {
-                                useStore.getState().updateSubtask(task.id, st.id, {
-                                  completed: checked,
-                                  completedAt: checked ? new Date().toISOString() : undefined
-                                });
+                              onChange={async (checked) => {
+                                try {
+                                  await updateSubtask(task.id, st.id, {
+                                    completed: checked,
+                                  });
+                                } catch (error) {
+                                  console.error('操作失败:', error);
+                                  message.error('操作失败，请重试');
+                                }
                               }}
                               color={colors[idx % colors.length]}
                             />
@@ -901,19 +999,13 @@ export default function TaskDetailPage() {
                     type="dashed"
                     onClick={() => {
                       if (!activeUserId) return;
-                      const stepTemplate = task.steps.map((s) => ({
-                        ...s,
-                        id: nanoid(),
-                        doneByUserId: undefined,
-                      }));
                       const seq =
-                        (task.subtasks || []).filter(
+                        taskSubtasks.filter(
                           (s) => s.ownerUserId === activeUserId
                         ).length + 1;
-                      useStore.getState().addSubtask(task.id, {
+                      addSubtask(task.id, {
                         name: `子任务 ${seq}`,
                         ownerUserId: activeUserId,
-                        steps: stepTemplate,
                       });
                     }}
                   >

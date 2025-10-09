@@ -18,7 +18,9 @@ export default function CustomCheckbox({
   className
 }: CustomCheckboxProps) {
   const handleClick = () => {
+    console.log('CustomCheckbox点击:', { checked, disabled });
     if (!disabled) {
+      console.log('CustomCheckbox调用onChange:', !checked);
       onChange(!checked);
     }
   };
