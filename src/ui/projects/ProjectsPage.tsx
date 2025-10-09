@@ -5,11 +5,11 @@ import {
   Modal,
   Space,
   Table,
-  Select,
   Grid,
   Card,
   Tag,
 } from "antd";
+import MobileSelect from "../components/MobileSelect";
 import { EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import { useMemo, useState } from "react";
 import { useStore } from "../../domain/store";
@@ -186,14 +186,14 @@ export default function ProjectsPage() {
             <Input placeholder="例如：官网改版" />
           </Form.Item>
           <Form.Item name="userIds" label="关联用户">
-            <Select
+            <MobileSelect
               mode="multiple"
               placeholder="选择用户"
               options={users.map((u) => ({ value: u.id, label: u.nickname }))}
             />
           </Form.Item>
           <Form.Item name="repeat" label="重复频率" initialValue={ProjectRepeat.NONE}>
-            <Select
+            <MobileSelect
               options={[
                 { value: ProjectRepeat.NONE, label: ProjectRepeatLabels[ProjectRepeat.NONE] },
                 { value: ProjectRepeat.DAILY, label: ProjectRepeatLabels[ProjectRepeat.DAILY] },

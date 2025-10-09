@@ -5,7 +5,6 @@ import {
   Form,
   Input,
   Modal,
-  Select,
   Space,
   Table,
   message,
@@ -14,6 +13,7 @@ import {
   Grid,
   Checkbox,
 } from "antd";
+import MobileSelect from "../components/MobileSelect";
 import {
   PlusOutlined,
   EditOutlined,
@@ -402,7 +402,7 @@ export default function AppointmentsPage() {
             label="提醒用户"
             rules={[{ required: true, message: "请选择提醒用户" }]}
           >
-            <Select
+            <MobileSelect
               mode="multiple"
               placeholder="选择用户"
               options={users.map((u) => ({ value: u.id, label: u.nickname }))}

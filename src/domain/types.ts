@@ -64,4 +64,5 @@ export type Task = {
   completedAt?: string; // ISO string when task was completed
   completedByUsers?: ID[]; // array of user IDs who completed this task (for multi-user tasks without steps)
   userCompletedAt?: { [userId: ID]: string }; // completion time for each user (for multi-user tasks without steps)
+  userNotes?: { [userId: ID]: string }; // user-specific notes for multi-user tasks
 };

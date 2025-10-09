@@ -68,6 +68,7 @@ export type StoreState = Entities & {
     userId?: ID
   ) => void;
   setTaskCompletedByUser: (taskId: ID, userId: ID, completed: boolean) => void;
+  setTaskUserNote: (taskId: ID, userId: ID, note: string) => void;
 
   // Appointments
   createAppointment: (
@@ -237,11 +238,39 @@ export const useStore = create<StoreState>((set, get) => ({
           if (idx === -1) return t;
           let steps = t.steps.slice();
           if (done && idx === steps.length - 1) {
-            steps = steps.map((sp, i) => ({
-              ...sp,
-              doneByUserId: i <= idx ? "__done__" : sp.doneByUserId,
-              completedAt: i <= idx ? (sp.completedAt || new Date().toISOString()) : sp.completedAt,
-            }));
+            // 处理最后一个步骤完成的情况
+            const now = new Date().toISOString();
+            steps = steps.map((sp, i) => {
+              if (i <= idx) {
+                if (t.userIds.length > 1 && userId) {
+                  // 多用户场景：更新completedByUsers
+                  const completedByUsers = sp.completedByUsers || [];
+                  const userCompletedAt = sp.userCompletedAt || {};
+                  const newCompletedByUsers = completedByUsers.includes(userId) 
+                    ? completedByUsers 
+                    : [...completedByUsers, userId];
+                  
+                  return {
+                    ...sp,
+                    completedByUsers: newCompletedByUsers,
+                    userCompletedAt: {
+                      ...userCompletedAt,
+                      [userId]: userCompletedAt[userId] || now
+                    },
+                    doneByUserId: newCompletedByUsers.length > 0 ? "__done__" : undefined,
+                    completedAt: sp.completedAt || now
+                  };
+                } else {
+                  // 单用户场景：使用原有逻辑
+                  return {
+                    ...sp,
+                    doneByUserId: "__done__",
+                    completedAt: sp.completedAt || now,
+                  };
+                }
+              }
+              return sp;
+            });
           } else {
             steps = steps.map((sp) => {
               if (sp.id !== stepId) return sp;
@@ -368,6 +397,26 @@ export const useStore = create<StoreState>((set, get) => ({
       save(ns);
       return ns;
     }),
+  setTaskUserNote: (taskId, userId, note) =>
+    set((s) => {
+      const tasks = s.tasks.map((t) => {
+        if (t.id !== taskId) return t;
+        
+        const userNotes = t.userNotes || {};
+        const newUserNotes = {
+          ...userNotes,
+          [userId]: note
+        };
+        
+        return {
+          ...t,
+          userNotes: newUserNotes
+        };
+      });
+      const ns = { ...s, tasks };
+      save(ns);
+      return ns;
+    }),
 
   // Appointments
   createAppointment: (data) => {
@@ -463,7 +512,14 @@ function recomputeTask(task: Task): Task {
         allDone = task.steps.every((s) => Boolean(s.doneByUserId));
       }
     } else {
-      allDone = task.completed;
+      // For tasks without steps, check if all users have completed
+      if (task.userIds.length > 1) {
+        allDone = task.userIds.every(userId => 
+          (task.completedByUsers || []).includes(userId)
+        );
+      } else {
+        allDone = task.completed;
+      }
     }
     
     const completedAt = allDone && !task.completedAt ? new Date().toISOString() : task.completedAt;

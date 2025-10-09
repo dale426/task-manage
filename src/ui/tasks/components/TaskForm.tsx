@@ -1,4 +1,5 @@
-import { Button, Form, Input, Select, Tag } from "antd";
+import { Button, Form, Input, Tag } from "antd";
+import MobileSelect from "../../components/MobileSelect";
 import { useMemo } from "react";
 import { useStore } from "../../../domain/store";
 import type { ID, Task } from "../../../domain/types";
@@ -37,11 +38,11 @@ export default function TaskForm({ form, editing, onCancel, onSubmit }: TaskForm
         <Input placeholder="例如：发布v1.0版本" />
       </Form.Item>
       <Form.Item name="projectId" label="关联项目">
-        <Select
+        <MobileSelect
           allowClear
           placeholder="选择项目"
           options={projects.map((p) => ({ value: p.id, label: p.name }))}
-          onChange={(projectId) => {
+          onChange={(projectId: ID) => {
             if (projectId) {
               const project = projects.find((p) => p.id === projectId);
               if (project?.userIds && project.userIds.length > 0) {
@@ -56,14 +57,14 @@ export default function TaskForm({ form, editing, onCancel, onSubmit }: TaskForm
         label="关联用户"
         rules={[{ required: true, message: "请选择关联用户" }]}
       >
-        <Select
+        <MobileSelect
           mode="multiple"
           placeholder="选择用户"
           options={users.map((u) => ({ value: u.id, label: u.nickname }))}
         />
       </Form.Item>
       <Form.Item name="type" label="任务类型" rules={[{ required: true }]}>
-        <Select
+        <MobileSelect
           options={[
             { value: TaskType.SINGLE, label: TaskTypeLabels[TaskType.SINGLE] + "任务" },
             { value: TaskType.COMPOSITE, label: TaskTypeLabels[TaskType.COMPOSITE] + "任务" },
