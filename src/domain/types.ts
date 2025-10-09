@@ -37,6 +37,7 @@ export type TaskStep = {
   completedByUsers?: ID[]; // array of user IDs who completed this step
   completedAt?: string; // ISO string when step was completed
   userCompletedAt?: { [userId: ID]: string }; // completion time for each user
+  userNotes?: { [userId: ID]: string }; // user-specific notes for steps
 };
 
 export type Subtask = {
@@ -47,6 +48,7 @@ export type Subtask = {
   completed: boolean;
   completedAt?: string; // ISO string when subtask was completed
   note?: string; // subtask notes
+  userNotes?: { [userId: ID]: string }; // user-specific notes for subtasks
 };
 
 export type Task = {

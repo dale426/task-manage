@@ -69,6 +69,8 @@ export type StoreState = Entities & {
   ) => void;
   setTaskCompletedByUser: (taskId: ID, userId: ID, completed: boolean) => void;
   setTaskUserNote: (taskId: ID, userId: ID, note: string) => void;
+  setStepUserNote: (taskId: ID, stepId: ID, userId: ID, note: string) => void;
+  setSubtaskUserNote: (taskId: ID, subtaskId: ID, userId: ID, note: string) => void;
 
   // Appointments
   createAppointment: (
@@ -411,6 +413,64 @@ export const useStore = create<StoreState>((set, get) => ({
         return {
           ...t,
           userNotes: newUserNotes
+        };
+      });
+      const ns = { ...s, tasks };
+      save(ns);
+      return ns;
+    }),
+  setStepUserNote: (taskId, stepId, userId, note) =>
+    set((s) => {
+      const tasks = s.tasks.map((t) => {
+        if (t.id !== taskId) return t;
+        
+        const steps = t.steps.map((step) => {
+          if (step.id !== stepId) return step;
+          
+          const userNotes = step.userNotes || {};
+          const newUserNotes = {
+            ...userNotes,
+            [userId]: note
+          };
+          
+          return {
+            ...step,
+            userNotes: newUserNotes
+          };
+        });
+        
+        return {
+          ...t,
+          steps
+        };
+      });
+      const ns = { ...s, tasks };
+      save(ns);
+      return ns;
+    }),
+  setSubtaskUserNote: (taskId, subtaskId, userId, note) =>
+    set((s) => {
+      const tasks = s.tasks.map((t) => {
+        if (t.id !== taskId) return t;
+        
+        const subtasks = (t.subtasks || []).map((subtask) => {
+          if (subtask.id !== subtaskId) return subtask;
+          
+          const userNotes = subtask.userNotes || {};
+          const newUserNotes = {
+            ...userNotes,
+            [userId]: note
+          };
+          
+          return {
+            ...subtask,
+            userNotes: newUserNotes
+          };
+        });
+        
+        return {
+          ...t,
+          subtasks
         };
       });
       const ns = { ...s, tasks };

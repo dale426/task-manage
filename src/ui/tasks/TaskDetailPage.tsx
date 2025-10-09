@@ -25,7 +25,7 @@ import processingImg from "../../assets/processing.png";
 export default function TaskDetailPage() {
   const { taskId } = useParams();
   const navigate = useNavigate();
-  const { tasks, users, projects, setStepDone, updateTask, setTaskCompletedByUser, setTaskUserNote } = useStore();
+  const { tasks, users, projects, setStepDone, updateTask, setTaskCompletedByUser, setTaskUserNote, setStepUserNote, setSubtaskUserNote } = useStore();
   const task = useMemo(
     () => tasks.find((t) => t.id === taskId),
     [tasks, taskId]
@@ -34,14 +34,16 @@ export default function TaskDetailPage() {
     task?.userIds?.[0]
   );
   const [activeNoteSubtaskId, setActiveNoteSubtaskId] = useState<ID | null>(null);
+  const [activeUserNoteId, setActiveUserNoteId] = useState<ID | null>(null);
 
   // 点击空白区域取消激活备注输入框
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       // 如果点击的不是备注相关的元素，则取消激活
-      if (!target.closest('.subtask-note-area') && !target.closest('.note-button')) {
+      if (!target.closest('.subtask-note-area') && !target.closest('.note-button') && !target.closest('.user-note-area') && !target.closest('.user-note-button')) {
         setActiveNoteSubtaskId(null);
+        setActiveUserNoteId(null);
       }
     };
 
@@ -102,6 +104,27 @@ export default function TaskDetailPage() {
               />
             )}
             <span>{task.name}</span>
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: "8px" }}>
+              {!task.completed && (
+                <Button
+                  type="primary"
+                  size="small"
+                  onClick={() => updateTask(task.id, { completed: true })}
+                  style={{ fontSize: "12px" }}
+                >
+                  强制完成
+                </Button>
+              )}
+              {task.completed && (
+                <Button
+                  size="small"
+                  onClick={() => updateTask(task.id, { completed: false })}
+                  style={{ fontSize: "12px" }}
+                >
+                  取消完成
+                </Button>
+              )}
+            </div>
           </div>
           <div style={{ color: "#555" }}>
             项目：<span style={{ fontWeight: "bold" }}>{projectName}</span>
@@ -164,7 +187,30 @@ export default function TaskDetailPage() {
 
       <div style={{ marginTop: 12 }}>
         {task.type === "single" ? (
-          <Card title="完成步骤">
+          <Card 
+            title={
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span>完成步骤</span>
+                {task.userIds.length > 1 && activeUserId && (
+                  <Button
+                    size="small"
+                    type="text"
+                    className="user-note-button"
+                    onClick={() => {
+                      if (activeUserNoteId === 'steps') {
+                        setActiveUserNoteId(null);
+                      } else {
+                        setActiveUserNoteId('steps');
+                      }
+                    }}
+                    title="添加用户备注"
+                  >
+                    📝
+                  </Button>
+                )}
+              </div>
+            }
+          >
             {task.steps.length === 0 ? (
               <div>
                 {task.userIds.length > 1 && (
@@ -302,6 +348,43 @@ export default function TaskDetailPage() {
                     style={{ marginBottom: 12 }}
                   />
                 )}
+                
+                {/* 用户备注区域 */}
+                {task.userIds.length > 1 && activeUserId && (
+                  <div className="user-note-area" style={{ marginBottom: 12 }}>
+                    {activeUserNoteId === 'steps' ? (
+                      <Input.TextArea
+                        size="small"
+                        value={task.userNotes?.[activeUserId] || ""}
+                        onChange={(e) => {
+                          setTaskUserNote(task.id, activeUserId, e.target.value);
+                        }}
+                        onBlur={() => {
+                          setActiveUserNoteId(null);
+                        }}
+                        placeholder="添加用户备注..."
+                        rows={2}
+                        autoFocus={true}
+                      />
+                    ) : task.userNotes?.[activeUserId] ? (
+                      <div 
+                        style={{ 
+                          padding: "4px 8px", 
+                          backgroundColor: "#f5f5f5", 
+                          borderRadius: "4px",
+                          fontSize: "12px",
+                          color: "#666",
+                          cursor: "pointer",
+                          minHeight: "20px"
+                        }}
+                        onClick={() => setActiveUserNoteId('steps')}
+                      >
+                        {task.userNotes[activeUserId]}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+                
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {task.steps.map((step, index) => {
                     // 在多用户场景下，显示当前用户是否完成了这个步骤
@@ -354,7 +437,11 @@ export default function TaskDetailPage() {
                             }}
                             color={currentColor}
                           />
-                          <span style={{ flex: 1 }}>{step.name}</span>
+                          <span style={{ 
+                            flex: 1,
+                            textDecoration: isCompletedByCurrentUser ? 'line-through' : 'none',
+                            opacity: isCompletedByCurrentUser ? 0.6 : 1
+                          }}>{step.name}</span>
                         </div>
                         {isCompletedByCurrentUser && step.userCompletedAt && step.userCompletedAt[activeUserId || ''] && (
                           <div style={{ marginLeft: "auto", fontSize: "12px", color: "#666" }}>
@@ -380,7 +467,28 @@ export default function TaskDetailPage() {
           </Card>
         ) : (
           <Card
-            title={`子任务（${doneSubtasks}/${totalSubtasks} 已完成）`}>
+            title={
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span>子任务（{doneSubtasks}/{totalSubtasks} 已完成）</span>
+                {task.userIds.length > 1 && activeUserId && (
+                  <Button
+                    size="small"
+                    type="text"
+                    className="user-note-button"
+                    onClick={() => {
+                      if (activeUserNoteId === 'subtasks') {
+                        setActiveUserNoteId(null);
+                      } else {
+                        setActiveUserNoteId('subtasks');
+                      }
+                    }}
+                    title="添加用户备注"
+                  >
+                    📝
+                  </Button>
+                )}
+              </div>
+            }>
             <Row gutter={[12, 12]}>
               <Col xs={24} md={24}>
                 <Tabs
@@ -433,6 +541,42 @@ export default function TaskDetailPage() {
                 />
               </Col>
               <Col xs={24} md={24}>
+                {/* 用户备注区域 */}
+                {task.userIds.length > 1 && activeUserId && (
+                  <div className="user-note-area" style={{ marginBottom: 12 }}>
+                    {activeUserNoteId === 'subtasks' ? (
+                      <Input.TextArea
+                        size="small"
+                        value={task.userNotes?.[activeUserId] || ""}
+                        onChange={(e) => {
+                          setTaskUserNote(task.id, activeUserId, e.target.value);
+                        }}
+                        onBlur={() => {
+                          setActiveUserNoteId(null);
+                        }}
+                        placeholder="添加用户备注..."
+                        rows={2}
+                        autoFocus={true}
+                      />
+                    ) : task.userNotes?.[activeUserId] ? (
+                      <div 
+                        style={{ 
+                          padding: "4px 8px", 
+                          backgroundColor: "#f5f5f5", 
+                          borderRadius: "4px",
+                          fontSize: "12px",
+                          color: "#666",
+                          cursor: "pointer",
+                          minHeight: "20px"
+                        }}
+                        onClick={() => setActiveUserNoteId('subtasks')}
+                      >
+                        {task.userNotes[activeUserId]}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+                
                 <Space direction="vertical" style={{ width: "100%" }}>
                   {(task.subtasks ?? [])
                     .filter(
@@ -661,8 +805,8 @@ export default function TaskDetailPage() {
                           <div className="subtask-note-area" style={{ marginTop: 4 }}>
                             {activeNoteSubtaskId === st.id ? (
                               // 编辑态：显示输入框
-                              <Input.TextArea
-                                size="small"
+                                <Input.TextArea
+                                  size="small"
                                 value={st.note || ""}
                                 onChange={(e) => {
                                   useStore
@@ -685,8 +829,8 @@ export default function TaskDetailPage() {
                                     setActiveNoteSubtaskId(null);
                                   }
                                 }}
-                                placeholder="子任务备注..."
-                                rows={2}
+                                  placeholder="子任务备注..."
+                                  rows={2}
                                 autoFocus={true}
                               />
                             ) : (
