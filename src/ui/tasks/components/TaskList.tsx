@@ -155,14 +155,15 @@ export default function TaskList({ tasks, onEdit, onDelete, onNavigate, onCopy }
           let totalCount = 0;
 
           if (r.type === TaskType.COMPOSITE) {
-            // 复合任务：统计所有用户的所有子任务
+            // 复合任务：统计所有子任务的完成情况
             const taskSubtasks = subtasks.filter(s => s.taskId === r.id);
             taskSubtasks.forEach(subtask => {
               if (subtask.steps.length > 0) {
                 // 有步骤的子任务，统计步骤完成情况
                 subtask.steps.forEach(step => {
                   totalCount++;
-                  if (step.doneByUserId === subtask.ownerUserId) {
+                  // 检查步骤是否被该子任务的所有者完成
+                  if (step.completedByUsers?.includes(subtask.ownerUserId) || step.doneByUserId === subtask.ownerUserId) {
                     completedCount++;
                   }
                 });
@@ -179,7 +180,7 @@ export default function TaskList({ tasks, onEdit, onDelete, onNavigate, onCopy }
             if (r.steps.length > 0) {
               // 有步骤的单例任务
               if (r.userIds.length > 1) {
-                // 多用户任务，每个用户都要完成所有步骤
+                // 多用户任务，统计所有用户完成的总步骤数
                 r.userIds.forEach(userId => {
                   r.steps.forEach(step => {
                     totalCount++;
@@ -192,7 +193,7 @@ export default function TaskList({ tasks, onEdit, onDelete, onNavigate, onCopy }
                 // 单用户任务
                 r.steps.forEach(step => {
                   totalCount++;
-                  if (step.doneByUserId) {
+                  if (step.doneByUserId || (step.completedByUsers && step.completedByUsers.length > 0)) {
                     completedCount++;
                   }
                 });
@@ -220,7 +221,7 @@ export default function TaskList({ tasks, onEdit, onDelete, onNavigate, onCopy }
               key={r.id}
               size="small"
               style={{
-                opacity: isCompleted ? 0.88 : 1,
+                opacity: isCompleted ? 0.58 : 1,
                 transition: "opacity 0.3s ease",
                 cursor: "pointer",
                 position: "relative",
@@ -228,9 +229,9 @@ export default function TaskList({ tasks, onEdit, onDelete, onNavigate, onCopy }
                   ? {
                     '--complete-img-url': `url(${completeImg})`,
                     '--complete-img-size': shouldCollapse ? '40px' : '60px',
-                    '--complete-img-top': shouldCollapse ? '-2px' : '8px',
-                    '--complete-img-right': shouldCollapse ? '4px' : '8px',
-                    '--complete-img-opacity': shouldCollapse ? '1' : '0.5'
+                    '--complete-img-top': shouldCollapse ? '-2px' : '0px',
+                    '--complete-img-right': shouldCollapse ? '4px' : '2px',
+                    '--complete-img-opacity': shouldCollapse ? '0.6' : '0.3'
                   } as React.CSSProperties
                   : {
                     '--processing-img-url': `url(${processingImg})`

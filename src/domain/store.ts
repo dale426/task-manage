@@ -11,6 +11,60 @@ import type {
 } from "./types";
 import { TaskType, ProjectRepeat, UserLevel } from "./enums";
 
+// 检查任务是否应该自动完成
+const checkTaskAutoCompletion = (task: Task, subtasks: Subtask[]): boolean => {
+  // 如果任务已经被强制完成，不进行自动完成检查
+  if (task.completed) {
+    return false;
+  }
+
+  if (task.type === TaskType.COMPOSITE) {
+    // 复合任务：检查所有子任务是否都完成
+    const taskSubtasks = subtasks.filter(s => s.taskId === task.id);
+    
+    // 如果没有子任务，不能自动完成
+    if (taskSubtasks.length === 0) {
+      return false;
+    }
+    
+    // 检查所有子任务是否都完成
+    return taskSubtasks.every(subtask => {
+      if (subtask.steps.length > 0) {
+        // 有步骤的子任务，检查所有步骤是否被所有者完成
+        return subtask.steps.every(step => 
+          step.completedByUsers?.includes(subtask.ownerUserId) || 
+          step.doneByUserId === subtask.ownerUserId
+        );
+      } else {
+        // 无步骤的子任务，直接检查子任务完成状态
+        return subtask.completed;
+      }
+    });
+  } else {
+    // 单例任务：检查所有步骤是否都被所有用户完成
+    if (task.steps.length === 0) {
+      // 无步骤的任务，检查所有用户是否都完成
+      return task.userIds.every(userId => 
+        task.completedByUsers?.includes(userId)
+      );
+    } else {
+      // 有步骤的任务，检查所有步骤是否都被所有用户完成
+      return task.steps.every(step => {
+        if (task.userIds.length > 1) {
+          // 多用户任务，检查所有用户是否都完成了这个步骤
+          return task.userIds.every(userId => 
+            step.completedByUsers?.includes(userId)
+          );
+        } else {
+          // 单用户任务，检查用户是否完成了这个步骤
+          return step.doneByUserId === task.userIds[0] || 
+                 (step.completedByUsers && step.completedByUsers.length > 0);
+        }
+      });
+    }
+  }
+};
+
 type Entities = {
   projects: Project[];
   users: User[];
@@ -64,6 +118,10 @@ export type StoreState = Entities & {
   setStepDone: (taskId: ID, stepId: ID, userId: ID) => Promise<void>;
   setStepUndone: (taskId: ID, stepId: ID, userId: ID) => Promise<void>;
   setTaskCompletedByUser: (taskId: ID, userId: ID) => Promise<void>;
+  
+  // 任务完成管理
+  forceCompleteTask: (taskId: ID) => Promise<void>;
+  forceUncompleteTask: (taskId: ID) => Promise<void>;
 
   // 预约管理
   createAppointment: (
@@ -295,8 +353,8 @@ export const useStore = create<StoreState>((set, get) => ({
       const response = await ApiRequest.markTaskStepComplete(taskId, stepId, userId);
       if (response.success) {
         // 更新本地状态
-        set((state) => ({
-          tasks: state.tasks.map((task) => {
+        set((state) => {
+          const updatedTasks = state.tasks.map((task) => {
             if (task.id !== taskId) return task;
             const updatedSteps = task.steps.map((step) => {
               if (step.id !== stepId) return step;
@@ -314,8 +372,27 @@ export const useStore = create<StoreState>((set, get) => ({
               };
             });
             return { ...task, steps: updatedSteps };
-          }),
-        }));
+          });
+          
+          // 检查是否需要自动完成任务
+          const task = updatedTasks.find(t => t.id === taskId);
+          if (task && !task.completed) {
+            const shouldAutoComplete = checkTaskAutoCompletion(task, state.subtasks);
+            if (shouldAutoComplete) {
+              // 自动完成任务
+              return {
+                ...state,
+                tasks: updatedTasks.map(t => 
+                  t.id === taskId 
+                    ? { ...t, completed: true, completedAt: new Date().toISOString() }
+                    : t
+                )
+              };
+            }
+          }
+          
+          return { ...state, tasks: updatedTasks };
+        });
       } else {
         throw new Error(response.error || 'Failed to mark step as done');
       }
@@ -413,6 +490,56 @@ export const useStore = create<StoreState>((set, get) => ({
       }
     } catch (error) {
       console.error('Failed to mark task as completed:', error);
+      throw error;
+    }
+  },
+
+  // 强制完成任务
+  forceCompleteTask: async (taskId) => {
+    try {
+      const response = await ApiRequest.updateTask(taskId, { completed: true });
+      if (response.success) {
+        // 更新本地状态
+        set((state) => ({
+          tasks: state.tasks.map((task) => {
+            if (task.id !== taskId) return task;
+            return {
+              ...task,
+              completed: true,
+              completedAt: new Date().toISOString(),
+            };
+          }),
+        }));
+      } else {
+        throw new Error(response.error || 'Failed to force complete task');
+      }
+    } catch (error) {
+      console.error('Failed to force complete task:', error);
+      throw error;
+    }
+  },
+
+  // 强制取消完成任务
+  forceUncompleteTask: async (taskId) => {
+    try {
+      const response = await ApiRequest.updateTask(taskId, { completed: false });
+      if (response.success) {
+        // 更新本地状态
+        set((state) => ({
+          tasks: state.tasks.map((task) => {
+            if (task.id !== taskId) return task;
+            return {
+              ...task,
+              completed: false,
+              completedAt: undefined,
+            };
+          }),
+        }));
+      } else {
+        throw new Error(response.error || 'Failed to force uncomplete task');
+      }
+    } catch (error) {
+      console.error('Failed to force uncomplete task:', error);
       throw error;
     }
   },
