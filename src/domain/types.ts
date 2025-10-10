@@ -70,3 +70,13 @@ export type Task = {
   userCompletedAt?: { [userId: ID]: string }; // completion time for each user (for multi-user tasks without steps)
   userNotes?: { [userId: ID]: string }; // user-specific notes for multi-user tasks
 };
+
+export type UserNote = {
+  id: ID;
+  entityType: 'task' | 'task_step' | 'subtask';
+  entityId: ID;
+  userId: ID;
+  note: string;
+  createdAt: string; // ISO string
+  updatedAt: string; // ISO string
+};
