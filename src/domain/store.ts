@@ -300,9 +300,26 @@ export const useStore = create<StoreState>((set, get) => ({
       });
 
       if (response.success && response.data) {
-        set((state) => ({
-          tasks: [...state.tasks, response.data!],
-        }));
+        // 如果是复合任务，需要重新获取子任务数据
+        if (data.type === 'composite' && data.subtaskTemplates && data.subtaskTemplates.length > 0) {
+          try {
+            const subtasksRes = await ApiRequest.getSubtasks();
+            set((state) => ({
+              tasks: [...state.tasks, response.data!],
+              subtasks: subtasksRes.data || [],
+            }));
+          } catch (subtaskError) {
+            console.error('Failed to fetch subtasks after task creation:', subtaskError);
+            // 即使获取子任务失败，也要更新任务状态
+            set((state) => ({
+              tasks: [...state.tasks, response.data!],
+            }));
+          }
+        } else {
+          set((state) => ({
+            tasks: [...state.tasks, response.data!],
+          }));
+        }
         return response.data;
       }
       throw new Error(response.error || 'Failed to create task');
@@ -634,6 +651,7 @@ export const useStore = create<StoreState>((set, get) => ({
 
   // 用户备注管理
   setTaskUserNote: async (taskId, userId, note) => {
+    console.log('Store: setTaskUserNote called', { taskId, userId, note });
     try {
       const response = await ApiRequest.createUserNote({
         entityType: 'task',
@@ -641,6 +659,7 @@ export const useStore = create<StoreState>((set, get) => ({
         userId,
         note,
       });
+      console.log('Store: API response', response);
       if (response.success) {
         // 更新本地状态
         set((state) => ({
@@ -648,10 +667,12 @@ export const useStore = create<StoreState>((set, get) => ({
             if (task.id !== taskId) return task;
             const userNotes = task.userNotes || {};
             userNotes[userId] = note;
+            console.log('Store: 更新任务用户备注', { taskId, userId, note, userNotes });
             return { ...task, userNotes };
           }),
-            }));
-          } else {
+        }));
+        console.log('Store: 本地状态更新完成');
+      } else {
         throw new Error(response.error || 'Failed to set task user note');
       }
     } catch (error) {
@@ -801,8 +822,8 @@ export const useStore = create<StoreState>((set, get) => ({
       const response = await ApiRequest.markSubtaskStepComplete(taskId, subtaskId, stepId, userId);
       if (response.success) {
         // 更新本地状态
-        set((state) => ({
-          subtasks: state.subtasks.map(subtask => {
+        set((state) => {
+          const updatedSubtasks = state.subtasks.map(subtask => {
             if (subtask.id === subtaskId) {
               const updatedSteps = subtask.steps.map(step => {
                 if (step.id === stepId) {
@@ -829,8 +850,46 @@ export const useStore = create<StoreState>((set, get) => ({
               };
             }
             return subtask;
-          }),
-        }));
+          });
+
+          // 检查复合任务是否应该自动完成
+          const task = state.tasks.find(t => t.id === taskId);
+          if (task && task.type === 'composite' && !task.completed) {
+            const taskSubtasks = updatedSubtasks.filter(s => s.taskId === taskId);
+            
+            // 检查所有子任务是否都完成了
+            const allSubtasksCompleted = taskSubtasks.length > 0 && taskSubtasks.every(subtask => {
+              if (subtask.steps.length > 0) {
+                // 有步骤的子任务，检查所有步骤是否被所有者完成
+                return subtask.steps.every(step => 
+                  step.completedByUsers?.includes(subtask.ownerUserId) || 
+                  step.doneByUserId === subtask.ownerUserId
+                );
+              } else {
+                // 无步骤的子任务，直接检查子任务完成状态
+                return subtask.completed;
+              }
+            });
+
+            if (allSubtasksCompleted) {
+              // 自动完成复合任务
+              return {
+                ...state,
+                subtasks: updatedSubtasks,
+                tasks: state.tasks.map(t => 
+                  t.id === taskId 
+                    ? { ...t, completed: true, completedAt: new Date().toISOString() }
+                    : t
+                )
+              };
+            }
+          }
+
+          return {
+            ...state,
+            subtasks: updatedSubtasks,
+          };
+        });
       } else {
         throw new Error(response.error || 'Failed to mark subtask step as done');
       }
@@ -848,8 +907,8 @@ export const useStore = create<StoreState>((set, get) => ({
       if (response.success) {
         console.log('Store: API调用成功，更新子任务状态');
         // 更新本地状态
-        set((state) => ({
-          subtasks: state.subtasks.map(subtask => {
+        set((state) => {
+          const updatedSubtasks = state.subtasks.map(subtask => {
             if (subtask.id === subtaskId) {
               const updatedSteps = subtask.steps.map(step => {
                 if (step.id === stepId) {
@@ -897,8 +956,46 @@ export const useStore = create<StoreState>((set, get) => ({
               };
             }
             return subtask;
-    }),
-}));
+          });
+
+          // 检查复合任务是否应该取消完成
+          const task = state.tasks.find(t => t.id === taskId);
+          if (task && task.type === 'composite' && task.completed) {
+            const taskSubtasks = updatedSubtasks.filter(s => s.taskId === taskId);
+            
+            // 检查是否还有未完成的子任务
+            const hasIncompleteSubtasks = taskSubtasks.some(subtask => {
+              if (subtask.steps.length > 0) {
+                // 有步骤的子任务，检查是否所有步骤都被所有者完成
+                return !subtask.steps.every(step => 
+                  step.completedByUsers?.includes(subtask.ownerUserId) || 
+                  step.doneByUserId === subtask.ownerUserId
+                );
+              } else {
+                // 无步骤的子任务，直接检查子任务完成状态
+                return !subtask.completed;
+              }
+            });
+
+            if (hasIncompleteSubtasks) {
+              // 取消完成复合任务
+              return {
+                ...state,
+                subtasks: updatedSubtasks,
+                tasks: state.tasks.map(t => 
+                  t.id === taskId 
+                    ? { ...t, completed: false, completedAt: undefined }
+                    : t
+                )
+              };
+            }
+          }
+
+          return {
+            ...state,
+            subtasks: updatedSubtasks,
+          };
+        });
       } else {
         throw new Error(response.error || 'Failed to mark subtask step as undone');
       }

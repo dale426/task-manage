@@ -274,7 +274,29 @@ class ApiRequest {
   // 任务管理API
   static async getTasks(): Promise<ApiResponse<Task[]>> {
     const tasks = LocalStorageManager.get<Task>(STORAGE_KEYS.TASKS);
-    return { success: true, data: tasks };
+    const userNotes = LocalStorageManager.get<any>(STORAGE_KEYS.USER_NOTES);
+    
+    // 为每个任务添加用户备注
+    const tasksWithNotes = tasks.map(task => {
+      const taskUserNotes: { [userId: ID]: string } = {};
+      
+      // 获取该任务的所有用户备注
+      const taskNotes = userNotes.filter(note => 
+        note.entityType === 'task' && note.entityId === task.id
+      );
+      
+      // 按用户ID组织备注
+      taskNotes.forEach(note => {
+        taskUserNotes[note.userId] = note.note;
+      });
+      
+      return {
+        ...task,
+        userNotes: taskUserNotes
+      };
+    });
+    
+    return { success: true, data: tasksWithNotes };
   }
 
   // 子任务管理API
@@ -392,7 +414,27 @@ class ApiRequest {
     if (!task) {
       return { success: false, error: 'Task not found' };
     }
-    return { success: true, data: task };
+    
+    // 获取该任务的用户备注
+    const userNotes = LocalStorageManager.get<any>(STORAGE_KEYS.USER_NOTES);
+    const taskUserNotes: { [userId: ID]: string } = {};
+    
+    // 获取该任务的所有用户备注
+    const taskNotes = userNotes.filter(note => 
+      note.entityType === 'task' && note.entityId === task.id
+    );
+    
+    // 按用户ID组织备注
+    taskNotes.forEach(note => {
+      taskUserNotes[note.userId] = note.note;
+    });
+    
+    const taskWithNotes = {
+      ...task,
+      userNotes: taskUserNotes
+    };
+    
+    return { success: true, data: taskWithNotes };
   }
 
   static async createTask(data: CreateTaskRequest): Promise<ApiResponse<Task>> {
@@ -865,18 +907,48 @@ class ApiRequest {
   }
 
   static async createUserNote(data: CreateUserNoteRequest): Promise<ApiResponse<any>> {
-    const note = {
-      id: `note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      entityType: data.entityType,
-      entityId: data.entityId,
-      userId: data.userId,
-      note: data.note,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    console.log('API: createUserNote called', data);
+    const userNotes = LocalStorageManager.get<any>(STORAGE_KEYS.USER_NOTES);
+    console.log('API: 当前用户备注数据', userNotes);
     
-    const createdNote = LocalStorageManager.add(STORAGE_KEYS.USER_NOTES, note);
-    return { success: true, data: createdNote };
+    // 检查是否已存在相同实体的用户备注
+    const existingNote = userNotes.find(note => 
+      note.entityType === data.entityType && 
+      note.entityId === data.entityId && 
+      note.userId === data.userId
+    );
+    
+    console.log('API: 查找现有备注', { existingNote });
+    
+    if (existingNote) {
+      // 更新现有备注
+      console.log('API: 更新现有备注');
+      const updatedNote = {
+        ...existingNote,
+        note: data.note,
+        updatedAt: new Date().toISOString(),
+      };
+      
+      const result = LocalStorageManager.update(STORAGE_KEYS.USER_NOTES, existingNote.id, updatedNote);
+      console.log('API: 更新结果', result);
+      return { success: true, data: result };
+    } else {
+      // 创建新备注
+      console.log('API: 创建新备注');
+      const note = {
+        id: `note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        entityType: data.entityType,
+        entityId: data.entityId,
+        userId: data.userId,
+        note: data.note,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      
+      const createdNote = LocalStorageManager.add(STORAGE_KEYS.USER_NOTES, note);
+      console.log('API: 创建结果', createdNote);
+      return { success: true, data: createdNote };
+    }
   }
 
   static async updateUserNote(id: ID, data: UpdateUserNoteRequest): Promise<ApiResponse<any>> {

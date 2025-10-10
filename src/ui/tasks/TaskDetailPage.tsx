@@ -42,13 +42,45 @@ export default function TaskDetailPage() {
   );
   const [activeNoteSubtaskId, setActiveNoteSubtaskId] = useState<ID | null>(null);
   const [activeUserNoteId, setActiveUserNoteId] = useState<ID | null>(null);
+  const [tempUserNote, setTempUserNote] = useState<string>("");
+
+  // 处理用户备注保存
+  const handleUserNoteSave = async (note: string) => {
+    console.log('handleUserNoteSave called:', { note, activeUserId, taskId: task?.id });
+    if (activeUserId && task) {
+      try {
+        await setTaskUserNote(task.id, activeUserId, note);
+        console.log('用户备注保存成功');
+      } catch (error) {
+        console.error('用户备注保存失败:', error);
+      }
+    }
+  };
+
+  // 处理用户备注输入框激活
+  const handleUserNoteActivate = (noteId: string) => {
+    setActiveUserNoteId(noteId);
+    setTempUserNote(task?.userNotes?.[activeUserId!] || "");
+  };
+
+  // 当activeUserId变化时，更新tempUserNote
+  useEffect(() => {
+    if (activeUserId && task) {
+      setTempUserNote(task.userNotes?.[activeUserId] || "");
+    }
+  }, [activeUserId, task]);
 
   // 点击空白区域取消激活备注输入框
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = async (event: MouseEvent) => {
       const target = event.target as HTMLElement;
       // 如果点击的不是备注相关的元素，则取消激活
       if (!target.closest('.subtask-note-area') && !target.closest('.note-button') && !target.closest('.user-note-area') && !target.closest('.user-note-button')) {
+        // 如果有激活的用户备注输入框，先保存备注
+        if (activeUserNoteId && activeUserId && task) {
+          console.log('点击空白区域，保存用户备注', { tempUserNote, activeUserId });
+          await handleUserNoteSave(tempUserNote);
+        }
         setActiveNoteSubtaskId(null);
         setActiveUserNoteId(null);
       }
@@ -58,7 +90,7 @@ export default function TaskDetailPage() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [activeUserNoteId, activeUserId, task, tempUserNote, handleUserNoteSave]);
 
   if (!task) return <Empty description="任务不存在" />;
 
@@ -287,11 +319,13 @@ export default function TaskDetailPage() {
                         {activeUserNoteId === 'steps' ? (
                           <Input.TextArea
                             size="small"
-                            value={task.userNotes?.[activeUserId] || ""}
+                            value={tempUserNote}
                             onChange={(e) => {
-                              setTaskUserNote(task.id, activeUserId, e.target.value);
+                              setTempUserNote(e.target.value);
                             }}
-                            onBlur={() => {
+                            onBlur={async () => {
+                              console.log('onBlur triggered', { tempUserNote, activeUserId });
+                              await handleUserNoteSave(tempUserNote);
                               setActiveUserNoteId(null);
                             }}
                             placeholder="添加用户备注..."
@@ -309,7 +343,7 @@ export default function TaskDetailPage() {
                               cursor: "pointer",
                               minHeight: "20px"
                             }}
-                            onClick={() => setActiveUserNoteId('steps')}
+                            onClick={() => handleUserNoteActivate('steps')}
                           >
                             {task.userNotes[activeUserId]}
                           </div>
@@ -351,9 +385,13 @@ export default function TaskDetailPage() {
                           </div>
                           <Input.TextArea
                             placeholder="添加个人备注..."
-                            value={task.userNotes?.[activeUserId] || ""}
+                            value={tempUserNote}
                             onChange={(e) => {
-                              setTaskUserNote(task.id, activeUserId, e.target.value);
+                              setTempUserNote(e.target.value);
+                            }}
+                            onBlur={async () => {
+                              console.log('onBlur triggered (multi-user)', { tempUserNote, activeUserId });
+                              await handleUserNoteSave(tempUserNote);
                             }}
                             rows={3}
                             style={{ resize: "none" }}
@@ -418,11 +456,13 @@ export default function TaskDetailPage() {
                     {activeUserNoteId === 'steps' ? (
                       <Input.TextArea
                         size="small"
-                        value={task.userNotes?.[activeUserId] || ""}
+                        value={tempUserNote}
                         onChange={(e) => {
-                          setTaskUserNote(task.id, activeUserId, e.target.value);
+                          setTempUserNote(e.target.value);
                         }}
-                        onBlur={() => {
+                        onBlur={async () => {
+                          console.log('onBlur triggered (steps)', { tempUserNote, activeUserId });
+                          await handleUserNoteSave(tempUserNote);
                           setActiveUserNoteId(null);
                         }}
                         placeholder="添加用户备注..."
@@ -440,7 +480,7 @@ export default function TaskDetailPage() {
                           cursor: "pointer",
                           minHeight: "20px"
                         }}
-                        onClick={() => setActiveUserNoteId('steps')}
+                        onClick={() => handleUserNoteActivate('steps')}
                       >
                         {task.userNotes[activeUserId]}
                       </div>
@@ -652,14 +692,16 @@ export default function TaskDetailPage() {
                     {activeUserNoteId === 'subtasks' ? (
                       <Input.TextArea
                         size="small"
-                        value={task.userNotes?.[activeUserId] || ""}
+                        value={tempUserNote}
                         onChange={(e) => {
-                          setTaskUserNote(task.id, activeUserId, e.target.value);
+                          setTempUserNote(e.target.value);
                         }}
-                        onBlur={() => {
+                        onBlur={async () => {
+                          console.log('onBlur triggered (subtasks)', { tempUserNote, activeUserId });
+                          await handleUserNoteSave(tempUserNote);
                           setActiveUserNoteId(null);
                         }}
-                        placeholder="添加用户备注..."
+                        placeholder="添加用户备注555..."
                         rows={2}
                         autoFocus={true}
                       />
@@ -674,7 +716,7 @@ export default function TaskDetailPage() {
                           cursor: "pointer",
                           minHeight: "20px"
                         }}
-                        onClick={() => setActiveUserNoteId('subtasks')}
+                        onClick={() => handleUserNoteActivate('subtasks')}
                       >
                         {task.userNotes[activeUserId]}
                       </div>
