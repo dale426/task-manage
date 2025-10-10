@@ -146,7 +146,6 @@ export default function TasksPage() {
   // 数据统计弹窗内容
   const dataStatsContent = dataStats ? (
     <div style={{ minWidth: 200 }}>
-      <div style={{ marginBottom: 8, fontWeight: 'bold' }}>数据统计</div>
       <div>用户: {dataStats.users} 个</div>
       <div>项目: {dataStats.projects} 个</div>
       <div>任务: {dataStats.tasks} 个</div>
