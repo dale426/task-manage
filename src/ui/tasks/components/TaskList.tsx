@@ -1,5 +1,5 @@
-import { Button, Card, Space, Table, Tag, Grid } from "antd";
-import { EditOutlined, DeleteOutlined, DownOutlined, RightOutlined } from "@ant-design/icons";
+import { Button, Card, Space, Table, Tag, Grid, message } from "antd";
+import { EditOutlined, DeleteOutlined, DownOutlined, RightOutlined, CopyOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { useMemo, useState } from "react";
 import { useStore } from "../../../domain/store";
@@ -7,15 +7,17 @@ import type { ID, Task } from "../../../domain/types";
 import { TaskType, TaskTypeLabels, ProjectRepeatLabels } from "../../../domain/enums";
 import completeImg from "../../../assets/complete.png";
 import processingImg from "../../../assets/processing.png";
+import { nanoid } from "../../../utils/id";
 
 interface TaskListProps {
   tasks: Task[];
   onEdit: (task: Task) => void;
   onDelete: (taskId: ID) => void;
   onNavigate: (path: string) => void;
+  onCopy?: (task: Task) => void;
 }
 
-export default function TaskList({ tasks, onEdit, onDelete, onNavigate }: TaskListProps) {
+export default function TaskList({ tasks, onEdit, onDelete, onNavigate, onCopy }: TaskListProps) {
   const { projects, users, subtasks } = useStore();
   const screens = Grid.useBreakpoint();
   const [expandedCards, setExpandedCards] = useState<Set<ID>>(new Set());
@@ -121,6 +123,14 @@ export default function TaskList({ tasks, onEdit, onDelete, onNavigate }: TaskLi
           >
             编辑
           </Button>
+          {onCopy && (
+            <Button
+              icon={<CopyOutlined />}
+              onClick={() => onCopy(record)}
+            >
+              复制
+            </Button>
+          )}
           <Button danger onClick={() => onDelete(record.id)}>
             删除
           </Button>
@@ -337,6 +347,17 @@ export default function TaskList({ tasks, onEdit, onDelete, onNavigate }: TaskLi
                       onEdit(r);
                     }}
                   />
+                  {onCopy && (
+                    <Button
+                      size="small"
+                      type="text"
+                      icon={<CopyOutlined />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCopy(r);
+                      }}
+                    />
+                  )}
                   <Button
                     size="small"
                     type="text"
