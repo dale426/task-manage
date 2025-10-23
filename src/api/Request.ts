@@ -345,7 +345,19 @@ class ApiRequest {
       return { success: false, error: 'Subtask not found' };
     }
 
-    subtasks[subtaskIndex] = { ...subtasks[subtaskIndex], ...updates };
+    const subtask = subtasks[subtaskIndex];
+    const updatedSubtask = { ...subtask, ...updates };
+    
+    // 如果子任务被标记为完成，记录完成时间
+    if (updates.completed === true && !subtask.completed) {
+      updatedSubtask.completedAt = new Date().toISOString();
+    }
+    // 如果子任务被标记为未完成，清除完成时间
+    else if (updates.completed === false && subtask.completed) {
+      updatedSubtask.completedAt = undefined;
+    }
+
+    subtasks[subtaskIndex] = updatedSubtask;
     LocalStorageManager.set(STORAGE_KEYS.SUBTASKS, subtasks);
     return { success: true };
   }
@@ -438,6 +450,12 @@ class ApiRequest {
   }
 
   static async createTask(data: CreateTaskRequest): Promise<ApiResponse<Task>> {
+    // 为无步骤的任务添加默认步骤
+    let taskSteps = data.steps;
+    if (!taskSteps || taskSteps.length === 0) {
+      taskSteps = [{ name: "我已完成任务" }];
+    }
+
     const task: Task = {
       id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: data.name,
@@ -445,7 +463,7 @@ class ApiRequest {
       userIds: data.userIds,
       note: data.note,
       type: data.type,
-      steps: data.steps.map((step, index) => ({
+      steps: taskSteps.map((step, index) => ({
         id: `step_${Date.now()}_${index}`,
         name: step.name,
       })),
@@ -464,11 +482,20 @@ class ApiRequest {
       // 为每个用户创建子任务
       for (const userId of data.userIds) {
         for (const template of data.subtaskTemplates) {
-          // 为每个子任务复制任务的步骤
-          const subtaskSteps: TaskStep[] = task.steps.map((step, index) => ({
-            id: `subtask_step_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
-            name: step.name,
-          }));
+          // 为每个子任务复制任务的步骤，如果任务没有步骤则添加默认步骤
+          let subtaskSteps: TaskStep[];
+          if (task.steps.length > 0) {
+            subtaskSteps = task.steps.map((step, index) => ({
+              id: `subtask_step_${Date.now()}_${index}_${Math.random().toString(36).substr(2, 9)}`,
+              name: step.name,
+            }));
+          } else {
+            // 为无步骤的子任务添加默认步骤
+            subtaskSteps = [{
+              id: `subtask_step_${Date.now()}_0_${Math.random().toString(36).substr(2, 9)}`,
+              name: "标记为完成",
+            }];
+          }
           
           const subtask: Subtask = {
             id: `subtask_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,

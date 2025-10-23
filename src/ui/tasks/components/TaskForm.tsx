@@ -104,9 +104,21 @@ export default function TaskForm({ form, editing, onCancel, onSubmit }: TaskForm
           getFieldValue("type") === TaskType.COMPOSITE ? (
             <div>
               <div style={{ fontWeight: 500, marginBottom: 8 }}>
-                子任务模板
+                子任务模板 <span style={{ color: "red" }}>*</span>
               </div>
-              <Form.List name="subtaskTemplates">
+              <Form.List 
+                name="subtaskTemplates"
+                rules={[
+                  {
+                    validator: (_, value) => {
+                      if (!value || value.length === 0) {
+                        return Promise.reject(new Error('复合任务必须至少有一个子任务'));
+                      }
+                      return Promise.resolve();
+                    }
+                  }
+                ]}
+              >
                 {(fields, { add, remove }) => (
                   <div>
                     {fields.map((field, idx) => (
@@ -135,8 +147,8 @@ export default function TaskForm({ form, editing, onCancel, onSubmit }: TaskForm
                             spellCheck="false"
                           />
                         </Form.Item>
-                        <PlusOutlined style={{padding: "0 6px", color: "green"}} onClick={() => add({ name: "" }, field.name + 1)}/>
-                        <DeleteOutlined style={{padding: "0 6px", color: "red"}} onClick={() => remove(field.name)}/>
+                        <PlusOutlined style={{padding: "0 6px", color: "green", cursor: "pointer"}} onClick={() => add({ name: "" }, field.name + 1)}/>
+                        <DeleteOutlined style={{padding: "0 6px", color: "red", cursor: "pointer"}} onClick={() => remove(field.name)}/>
                       </div>
                     ))}
                     {fields.length === 0 && (
@@ -156,7 +168,12 @@ export default function TaskForm({ form, editing, onCancel, onSubmit }: TaskForm
         }
       </Form.Item>
       <div>
-        <div style={{ fontWeight: 500, marginBottom: 8 }}>完成步骤</div>
+        <div style={{ fontWeight: 500, marginBottom: 8 }}>
+          完成步骤
+          <span style={{ fontSize: "12px", color: "#666", fontWeight: "normal", marginLeft: "8px" }}>
+            (无步骤时将自动添加"我已完成任务"默认步骤)
+          </span>
+        </div>
         <Form.List name="steps">
           {(fields, { add, remove }) => (
             <div>
