@@ -90,14 +90,6 @@ export default function TaskSteps({
     }
   };
 
-  console.log('TaskSteps: 渲染组件', { 
-    taskId: task.id, 
-    stepsLength: task.steps.length, 
-    steps: task.steps,
-    userIds: task.userIds,
-    activeUserId 
-  });
-
   return (
     <Card title="完成步骤">
       {task.steps.length === 0 ? (
@@ -108,6 +100,8 @@ export default function TaskSteps({
             activeUserId={activeUserId}
             onUserChange={onUserChange}
             getUserCompletionStatus={getUserCompletionStatus}
+            task={task}
+            showTaskProgress={true}
           />
           
           {task.userIds.length === 1 ? (
@@ -176,6 +170,8 @@ export default function TaskSteps({
             activeUserId={activeUserId}
             onUserChange={onUserChange}
             getUserCompletionStatus={getUserCompletionStatus}
+            task={task}
+            showTaskProgress={true}
           />
           
           <UserNote
@@ -191,16 +187,6 @@ export default function TaskSteps({
                 ? (step.completedByUsers || []).includes(activeUserId || '')
                 : (step.completedByUsers || []).includes(task.userIds[0]);
               const currentColor = colors[index % colors.length];
-              
-              console.log('TaskSteps: 渲染步骤', { 
-                stepId: step.id, 
-                stepName: step.name, 
-                isCompletedByCurrentUser, 
-                completedByUsers: step.completedByUsers,
-                userIds: task.userIds,
-                activeUserId,
-                userIdsLength: task.userIds.length
-              });
 
               return (
                 <div

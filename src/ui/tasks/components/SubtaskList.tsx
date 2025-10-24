@@ -72,6 +72,9 @@ export default function SubtaskList({
             onUserChange={onUserChange}
             getUserCompletionStatus={getUserCompletionStatus}
             getUserIncompleteCount={getUserIncompleteCount}
+            task={task}
+            taskSubtasks={taskSubtasks}
+            showTaskProgress={true}
           />
         </Col>
         <Col xs={24} md={24}>
