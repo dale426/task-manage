@@ -7,6 +7,7 @@ import { TaskType } from "../../domain/enums";
 import TaskHeader from "./components/TaskHeader";
 import TaskSteps from "./components/TaskSteps";
 import SubtaskList from "./components/SubtaskList";
+import RecentActivity from "./components/RecentActivity";
 
 export default function TaskDetailPage() {
   const { taskId } = useParams();
@@ -79,6 +80,12 @@ export default function TaskDetailPage() {
         projects={projects}
         onTaskUpdate={updateTask}
         onNavigateBack={() => navigate(-1)}
+      />
+
+      <RecentActivity
+        task={task}
+        taskSubtasks={taskSubtasks}
+        users={users}
       />
 
       <div style={{ marginTop: 12 }}>

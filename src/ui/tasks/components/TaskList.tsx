@@ -22,6 +22,31 @@ export default function TaskList({ tasks, onEdit, onDelete, onNavigate, onCopy }
   const screens = Grid.useBreakpoint();
   const [expandedCards, setExpandedCards] = useState<Set<ID>>(new Set());
 
+  // 计算距离结束时间的函数
+  const getTimeToDeadline = (dueAt?: string) => {
+    if (!dueAt) return "无截止时间";
+    
+    const now = dayjs();
+    const deadline = dayjs(dueAt);
+    
+    if (deadline.isBefore(now)) {
+      return "已过期";
+    }
+    
+    const diff = deadline.diff(now);
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (days > 0) {
+      return `${days}天${hours}小时${minutes}分钟`;
+    } else if (hours > 0) {
+      return `${hours}小时${minutes}分钟`;
+    } else {
+      return `${minutes}分钟`;
+    }
+  };
+
   const toggleCardExpansion = (taskId: ID) => {
     setExpandedCards(prev => {
       const newSet = new Set(prev);
@@ -322,8 +347,13 @@ export default function TaskList({ tasks, onEdit, onDelete, onNavigate, onCopy }
                     <span style={{ color: "#666" }}> / {totalCount}</span>
                   </div>
                   <div style={{ color: "#333", marginBottom: "4px" }}>
-                    <span style={{ color: "#666" }}>用户名: </span>
-                    <span>{userNames}</span>
+                    <span style={{ color: "#666" }}>距离结束: </span>
+                    <span style={{ 
+                      color: r.dueAt && dayjs(r.dueAt).isBefore(dayjs()) ? "#ff4d4f" : "#52c41a",
+                      fontWeight: "500"
+                    }}>
+                      {getTimeToDeadline(r.dueAt)}
+                    </span>
                   </div>
                   {r.note && (
                     <div style={{ color: "#333" }}>
