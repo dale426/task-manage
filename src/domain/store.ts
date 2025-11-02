@@ -289,6 +289,7 @@ export const useStore = create<StoreState>((set, get) => ({
   createTask: async (data) => {
     try {
       const response = await ApiRequest.createTask({
+        id: data.id, // 传递id字段，用于复制任务时指定新任务ID
         name: data.name,
         projectId: data.projectId,
         userIds: data.userIds,

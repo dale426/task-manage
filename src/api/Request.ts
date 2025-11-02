@@ -48,6 +48,7 @@ interface UpdateProjectRequest {
 }
 
 interface CreateTaskRequest {
+  id?: ID; // 可选的ID，用于复制任务时指定新任务ID
   name: string;
   projectId?: ID;
   userIds: ID[];
@@ -362,6 +363,53 @@ class ApiRequest {
     return { success: true };
   }
 
+  static async copySubtasks(originalTaskId: ID, newTaskId: ID): Promise<ApiResponse<Subtask[]>> {
+    // 获取原任务的所有子任务
+    const originalSubtasksRes = await this.getSubtasksByTaskId(originalTaskId);
+    if (!originalSubtasksRes.success || !originalSubtasksRes.data) {
+      return { success: false, error: 'Failed to get original subtasks' };
+    }
+
+    const originalSubtasks = originalSubtasksRes.data;
+    const copiedSubtasks: Subtask[] = [];
+    const baseTime = Date.now();
+    let stepIndex = 0;
+
+    // 复制每个子任务
+    for (let i = 0; i < originalSubtasks.length; i++) {
+      const originalSubtask = originalSubtasks[i];
+      const copiedSubtask: Subtask = {
+        ...originalSubtask,
+        id: `subtask_${baseTime}_${i}_${Math.random().toString(36).substr(2, 9)}`,
+        taskId: newTaskId, // 关联到新任务
+        completed: false,
+        completedAt: undefined,
+        note: originalSubtask.note, // 保留备注
+        userNotes: undefined, // 重置用户备注
+        // 复制步骤但重置完成状态
+        steps: originalSubtask.steps.map((step: TaskStep, stepIdx: number) => {
+          const newStepId = `subtask_step_${baseTime}_${stepIndex}_${Math.random().toString(36).substr(2, 9)}`;
+          stepIndex++;
+          return {
+            ...step,
+            id: newStepId,
+            doneByUserId: undefined,
+            completedByUsers: undefined,
+            completedAt: undefined,
+            userCompletedAt: undefined,
+            userNotes: undefined,
+          };
+        }),
+      };
+
+      // 保存复制的子任务
+      const createdSubtask = LocalStorageManager.add(STORAGE_KEYS.SUBTASKS, copiedSubtask);
+      copiedSubtasks.push(createdSubtask);
+    }
+
+    return { success: true, data: copiedSubtasks };
+  }
+
   static async deleteSubtask(taskId: ID, subtaskId: ID): Promise<ApiResponse<void>> {
     const subtasks = LocalStorageManager.get<Subtask>(STORAGE_KEYS.SUBTASKS);
     const filteredSubtasks = subtasks.filter(s => !(s.id === subtaskId && s.taskId === taskId));
@@ -457,7 +505,7 @@ class ApiRequest {
     }
 
     const task: Task = {
-      id: `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: data.id || `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // 如果传入了id就使用它
       name: data.name,
       projectId: data.projectId,
       userIds: data.userIds,

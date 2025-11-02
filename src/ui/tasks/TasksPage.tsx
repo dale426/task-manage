@@ -2,7 +2,7 @@ import { Button, Form, Modal, message, Upload, Space, Popover, Tooltip } from "a
 import dayjs from "dayjs";
 import { useMemo, useState } from "react";
 import { useStore } from "../../domain/store";
-import type { ID, Task } from "../../domain/types";
+import type { ID, Task, Subtask } from "../../domain/types";
 import { TaskType } from "../../domain/enums";
 import { useNavigate } from "react-router-dom";
 import TaskForm from "./components/TaskForm";
@@ -11,6 +11,7 @@ import { nanoid } from "../../utils/id";
 import { DataExportImportService } from "../../services/DataExportImport";
 import { DownloadOutlined, UploadOutlined, DatabaseOutlined } from "@ant-design/icons";
 import { TaskStep } from "../../domain/types";
+import ApiRequest from "../../api/Request";
 
 type TaskFormValues = {
   name: string;
@@ -176,13 +177,23 @@ export default function TasksPage() {
   // 执行任务复制
   const performTaskCopy = async (originalTask: Task) => {
     try {
+      // 如果是复合任务，先获取所有子任务（包括手动添加的）
+      let originalSubtasks: Subtask[] = [];
+      if (originalTask.type === TaskType.COMPOSITE) {
+        const subtasksRes = await ApiRequest.getSubtasksByTaskId(originalTask.id);
+        if (subtasksRes.success && subtasksRes.data) {
+          originalSubtasks = subtasksRes.data;
+          console.log(`获取到原始任务的子任务数量: ${originalSubtasks.length}`, originalSubtasks);
+        }
+      }
+      
       // 创建新任务ID
       const newTaskId = nanoid();
       
       // 复制任务基本信息，重置状态
       const copiedTask = {
         ...originalTask,
-        id: newTaskId,
+        id: newTaskId, // 指定新任务ID
         name: `${originalTask.name}（复制）`,
         completed: false,
         completedAt: undefined,
@@ -203,15 +214,39 @@ export default function TasksPage() {
         subtaskTemplates: originalTask.subtaskTemplates ? [...originalTask.subtaskTemplates] : undefined,
       };
 
-
-      // 创建新任务（API会自动处理复合任务的子任务生成）
+      // 创建新任务（传入id以确保使用我们指定的ID）
       await createTask(copiedTask);
+      
+      // 如果是复合任务且有子任务，复制所有子任务（包括手动添加的）
+      // 注意：由于 createTask 会根据模板自动生成子任务，我们需要先删除这些自动生成的子任务
+      // 然后再复制所有原始子任务，这样可以确保手动添加的子任务也被复制
+      if (originalTask.type === TaskType.COMPOSITE && originalSubtasks.length > 0) {
+        // 删除自动生成的模板子任务（如果有的话）
+        const newTaskSubtasksRes = await ApiRequest.getSubtasksByTaskId(newTaskId);
+        if (newTaskSubtasksRes.success && newTaskSubtasksRes.data) {
+          console.log(`删除自动生成的子任务数量: ${newTaskSubtasksRes.data.length}`);
+          // 删除所有自动生成的子任务
+          for (const autoSubtask of newTaskSubtasksRes.data) {
+            await ApiRequest.deleteSubtask(newTaskId, autoSubtask.id);
+          }
+        }
+        
+        // 复制所有原始子任务（包括手动添加的）
+        console.log(`开始复制 ${originalSubtasks.length} 个子任务...`);
+        const copyResult = await ApiRequest.copySubtasks(originalTask.id, newTaskId);
+        if (copyResult.success && copyResult.data) {
+          console.log(`成功复制 ${copyResult.data.length} 个子任务`, copyResult.data);
+        } else {
+          console.error('复制子任务失败:', copyResult.error);
+        }
+      }
       
       // 重新加载数据以确保UI更新
       await initializeData();
       
       message.success('任务复制成功！');
     } catch (error) {
+      console.error('复制任务时发生错误:', error);
       message.error(`复制失败: ${error instanceof Error ? error.message : '未知错误'}`);
     }
   };
