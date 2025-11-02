@@ -1,5 +1,6 @@
 import { Card, List, Space, Typography } from "antd";
 import dayjs from "dayjs";
+import { useState } from "react";
 import { Task, Subtask, User, TaskStep } from "../../../domain/types";
 import { TaskType } from "../../../domain/enums";
 
@@ -23,6 +24,8 @@ interface RecentActivityProps {
 }
 
 export default function RecentActivity({ task, taskSubtasks, users }: RecentActivityProps) {
+  const [displayCount, setDisplayCount] = useState(3); // 初始显示3条
+
   // 获取用户名称的辅助函数
   const getUserName = (userId: string) => {
     return users.find(u => u.id === userId)?.nickname || '未知用户';
@@ -93,13 +96,14 @@ export default function RecentActivity({ task, taskSubtasks, users }: RecentActi
       });
     }
 
-    // 按时间倒序排序，取最近3条
+    // 按时间倒序排序，返回所有记录
     return activities
-      .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime())
-      .slice(0, 3);
+      .sort((a, b) => new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime());
   };
 
-  const activities = collectActivities();
+  const allActivities = collectActivities();
+  const activities = allActivities.slice(0, displayCount); // 根据displayCount显示对应数量的记录
+  const hasMore = displayCount < allActivities.length; // 是否还有更多记录
 
   if (activities.length === 0) {
     return null;
@@ -158,6 +162,15 @@ export default function RecentActivity({ task, taskSubtasks, users }: RecentActi
     }
   };
 
+  const handleLoadMore = () => {
+    // 如果当前显示3条，点击后显示10条；否则每次增加10条
+    if (displayCount === 3) {
+      setDisplayCount(Math.min(10, allActivities.length));
+    } else {
+      setDisplayCount(prev => Math.min(prev + 10, allActivities.length));
+    }
+  };
+
   return (
     <div style={{ marginTop: 8 }}>
       <div style={{ 
@@ -177,6 +190,40 @@ export default function RecentActivity({ task, taskSubtasks, users }: RecentActi
             {renderActivityItem(activity)}
           </div>
         ))}
+        {/* 查看更多按钮 */}
+        {allActivities.length > 0 && (
+          <div style={{ 
+            padding: '0px 12px', 
+            textAlign: 'center',
+            borderTop: activities.length > 0 ? '1px solid #f5f5f5' : 'none'
+          }}>
+            {hasMore ? (
+              <Text
+                onClick={handleLoadMore}
+                style={{
+                  fontSize: '12px',
+                  color: '#1890ff',
+                  cursor: 'pointer',
+                  padding: '0',
+                  lineHeight: '1',
+                }}
+              >
+                查看更多
+              </Text>
+            ) : allActivities.length > 3 ? (
+              <Text
+                style={{
+                  fontSize: '12px',
+                  color: '#999',
+                  padding: '0',
+                  lineHeight: '1.5',
+                }}
+              >
+                没有更多了
+              </Text>
+            ) : null}
+          </div>
+        )}
       </div>
     </div>
   );

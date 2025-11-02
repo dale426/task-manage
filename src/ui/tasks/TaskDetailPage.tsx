@@ -88,7 +88,7 @@ export default function TaskDetailPage() {
         users={users}
       />
 
-      <div style={{ marginTop: 12 }}>
+      <div style={{ marginTop: 8 }}>
         {task.type === TaskType.SINGLE ? (
           <TaskSteps
             task={task}
