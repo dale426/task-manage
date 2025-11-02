@@ -61,6 +61,9 @@ export default function UserTabs({
     const incompleteCount = getUserIncompleteCount?.(uid) || 0;
     const isLastUser = index === userIds.length - 1;
     
+    // 判断当前tab是否激活
+    const isActive = activeUserId === uid;
+    
     // 计算任务完成情况
     let progressTag = null;
     if (showTaskProgress && task) {
@@ -132,11 +135,13 @@ export default function UserTabs({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: "8px",
-                    fontWeight: "100",
+                    fontSize: "10px",
+                    fontWeight: "500",
                     lineHeight: "1",
                     margin: 0,
                     minWidth: "14px",
+                    transform: isActive ? "scale(1.2)" : "scale(1)",
+                    transition: "transform 0.2s ease",
                   }}
                 >
                   {incompleteCount}
@@ -160,6 +165,8 @@ export default function UserTabs({
                     lineHeight: "1",
                     margin: 0,
                     minWidth: "14px",
+                    transform: isActive ? "scale(1.2)" : "scale(1)",
+                    transition: "transform 0.2s ease",
                   }}
                 >
                   ✓
@@ -191,7 +198,9 @@ export default function UserTabs({
                 position: "absolute",
                 top: "2px",
                 right: isLastUser ? "18px": "-2px",
-                transform: "translate(50%, -50%)",
+                transform: isActive ? "translate(50%, -50%) scale(1.2)" : "translate(50%, -50%)",
+                transformOrigin: "center center",
+                transition: "transform 0.2s ease",
                 zIndex: 1,
               }}
             >
